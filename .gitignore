@@ -53,3 +53,23 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# ==========================================
+# Visual Studio 专属隐藏文件与编译目录屏蔽
+# ==========================================
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+x64/
+x86/
+Debug/
+Release/
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+*.suo
+*.db
+*.opendb
+*.VC.db
