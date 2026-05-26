@@ -84,5 +84,7 @@ int main() {
 
     EndBatchDraw();
     closegraph();
+    // 【新增】在程序彻底关闭前，呼叫 组员C 的函数清理内存！
+    FreeAllHumans();
     return 0;
 }
