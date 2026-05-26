@@ -18,9 +18,33 @@
     <ClInclude Include="..\global.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="render.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="human_logic.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="combat_sys.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="render.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="human_logic.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="combat_sys.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="camera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

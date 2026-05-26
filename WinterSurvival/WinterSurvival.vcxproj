@@ -129,9 +129,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\global.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="combat_sys.h" />
+    <ClInclude Include="human_logic.h" />
+    <ClInclude Include="render.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="camera.cpp" />
+    <ClCompile Include="combat_sys.cpp" />
+    <ClCompile Include="human_logic.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="render.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

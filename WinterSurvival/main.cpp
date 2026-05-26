@@ -1,7 +1,14 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include "global.h"
 #include <stdio.h>
 #include <stdlib.h> 
+#define _CRT_SECURE_NO_WARNINGS 
+#include "camera.h"      // 引入组员A的模块
+#include "render.h"      // 引入组员 B 的模块
+#include "human_logic.h" // 引入组员 C 的模块
+#include "combat_sys.h"  // 引入组员 D 的模块
+
+// ... 后面的代码保持不变
 // 【极其重要】全项目唯一一次定义 game 变量的地方
 GameState game;
 
