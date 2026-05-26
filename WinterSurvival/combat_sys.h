@@ -5,3 +5,4 @@
 void ProcessCombatRound();
 bool SaveGame(const char* filepath);
 bool LoadGame(const char* filepath);
+void FreeAllHumans(void);
