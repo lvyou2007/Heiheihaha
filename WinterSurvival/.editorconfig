@@ -1,0 +1,10 @@
+# 顶层 EditorConfig 配置文件
+root = true
+
+# 匹配所有代码文件
+[*]
+# 强制团队所有人的 Visual Studio 自动使用带 BOM 的 UTF-8 保存文件
+charset = utf-8-bom
+# 统一缩进为 4 个空格，防止代码错位
+indent_style = space
+indent_size = 4

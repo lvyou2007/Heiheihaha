@@ -3,5 +3,8 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="WinterSurvival.vcxproj" />
+  <Folder Name="/解决方案项/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="WinterSurvival.vcxproj" Id="e2bcaaa5-6470-4188-b940-b115e43d8fa0" />
 </Solution>
