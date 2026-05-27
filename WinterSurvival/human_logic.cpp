@@ -1,7 +1,8 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 #include "human_logic.h"
+#include <stdio.h>   
+#include <stdlib.h>
 
-Game game;
 
 static void RandomName(char* name) {
     const char* first[] = { "勇者", "智者", "迅捷", "沉稳", "狂热" };
@@ -41,8 +42,8 @@ Human* CreateHuman(int base_level) {
         h->def = (int)(h->def * 1.5);
     }
     // 随机分配坐标
-    h->world_x = (float)(rand() % WORLD_WIDTH);
-    h->world_y = (float)(rand() % WORLD_HEIGHT);
+    h->world_x = (float)(rand() % (int)WORLD_WIDTH);
+    h->world_y = (float)(rand() % (int)WORLD_HEIGHT);
     return h;
 }
 
