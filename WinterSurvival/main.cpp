@@ -49,6 +49,7 @@ void InitGameData() {
 
 // 2. 游戏主循环控制入口
 int main() {
+    SetConsoleOutputCP(65001); // 强制控制台使用 UTF-8 编码显示
     // --- 【引擎初始化阶段】 ---
 
     // 初始化 1280x720 像素分辨率的游戏窗口
@@ -110,7 +111,42 @@ int main() {
         }
 
         case STATE_CITY: {
-            // DrawWorld();   
+            // DrawWorld(); 
+            // 【修复拖尾问题】：在每一帧绘制前，必须先擦干净上一帧图像
+            cleardevice();
+// ========== 【临时测试代码：可视化大地图】 ==========
+            int screen_x, screen_y;
+
+            // 1. 画世界地图中心点 (世界坐标 0, 0)
+            WorldToScreen(0, 0, &screen_x, &screen_y);
+            setlinecolor(RED);  // 红色十字准星
+            line(screen_x - 50, screen_y, screen_x + 50, screen_y);
+            line(screen_x, screen_y - 50, screen_x, screen_y + 50);
+
+            // 2. 画一个分布在世界各地的网格阵列 (测试平移和缩放)
+            setlinecolor(DARKGRAY);
+            for (int wx = -1000; wx <= 1000; wx += 200) {
+                for (int wy = -1000; wy <= 1000; wy += 200) {
+                    WorldToScreen(wx, wy, &screen_x, &screen_y);
+                    // 在屏幕上画个十字代表坐标点
+                    line(screen_x - 5, screen_y, screen_x + 5, screen_y);
+                    line(screen_x, screen_y - 5, screen_x, screen_y + 5);
+
+                    // （可选）如果想看缩放效果更明显，可以画空心圆
+                    // circle(screen_x, screen_y, (int)(10 * game.camera.zoom)); 
+                }
+            }
+
+            // 3. 将组员 C 生成的真实人口坐标画出来！
+            setfillcolor(GREEN);
+            Human* cur = game.head;
+            while (cur != NULL) {
+                WorldToScreen(cur->world_x, cur->world_y, &screen_x, &screen_y);
+                // 把小人画成一个半径随缩放变化的绿色圆点
+                solidcircle(screen_x, screen_y, (int)(5 * game.camera.zoom));
+                cur = cur->next;
+            }
+            // =====================================================
             // DrawCityUI();  
 
             // --- 【时间解耦】 每日结算逻辑每 1000 毫秒（1秒）执行一次 ---
