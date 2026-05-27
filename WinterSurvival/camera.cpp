@@ -1,8 +1,8 @@
 ﻿#include "camera.h"
 
 // 定义世界坐标边界
-#define WORLD_WIDTH  800.0f
-#define WORLD_HEIGHT 600.0f
+#define WORLD_WIDTH  3000.0f
+#define WORLD_HEIGHT 3000.0f
 
 // 坐标转换：将世界坐标转换为屏幕像素坐标
 void WorldToScreen(float world_x, float world_y, int* screen_x, int* screen_y) {
@@ -97,12 +97,13 @@ void ProcessInput() {
     while (peekmessage(&msg, EM_MOUSE)) {
 
         // --- 1. 处理鼠标拖拽 ---
-        if (msg.message == WM_MBUTTONDOWN || (msg.message == WM_LBUTTONDOWN && msg.ctrl)) {
+// 修改后：直接响应右键，不需要按 Ctrl 也不用按中键
+        if (msg.message == WM_RBUTTONDOWN) {
             is_dragging = true;
             last_mouse_x = msg.x;
             last_mouse_y = msg.y;
         }
-        else if (msg.message == WM_MBUTTONUP || (msg.message == WM_LBUTTONUP && msg.ctrl)) {
+        else if (msg.message == WM_RBUTTONUP) {
             is_dragging = false;
         }
         else if (msg.message == WM_MOUSEMOVE) {
