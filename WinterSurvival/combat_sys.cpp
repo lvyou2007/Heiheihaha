@@ -1,7 +1,7 @@
 ﻿// combat_sys.cpp
 // 组员D: 动态战斗引擎 + 序列化存档/读档
 // 适配最新的 global.h (2026-05-26版本)
-
+#define _CRT_SECURE_NO_WARNINGS
 #include "combat_sys.h"
 #include "global.h"
 #include <stdio.h>
