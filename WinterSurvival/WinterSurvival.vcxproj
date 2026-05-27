@@ -128,9 +128,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\global.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="combat_sys.h" />
+    <ClInclude Include="global.h" />
     <ClInclude Include="human_logic.h" />
     <ClInclude Include="render.h" />
   </ItemGroup>
