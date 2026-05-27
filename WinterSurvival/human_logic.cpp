@@ -105,6 +105,19 @@ void DailySettlement() {
     while (cur != NULL) {
         Human* next = cur->next;  // 因为可能删除cur，先存下一个
 
+        // === 新增：让人物每天随机朝某个方向走动几步 ===
+       // 随机产生 -10 到 10 之间的世界位移
+        float dx = (float)((rand() % 21) - 10);
+        float dy = (float)((rand() % 21) - 10);
+        cur->world_x += dx;
+        cur->world_y += dy;
+
+        // 限制不要走成出世界边界 (0,0) 到 (800, 600)
+        if (cur->world_x < 0) cur->world_x = 0;
+        if (cur->world_x > 800) cur->world_x = 800;
+        if (cur->world_y < 0) cur->world_y = 0;
+        if (cur->world_y > 600) cur->world_y = 600;
+
         // 1. 饱食度下降（每天-10）
         cur->hunger -= 10;
         if (cur->hunger < 0) cur->hunger = 0;

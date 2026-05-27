@@ -1,8 +1,6 @@
 ﻿#include "camera.h"
 
-// 定义世界坐标边界
-#define WORLD_WIDTH  3000.0f
-#define WORLD_HEIGHT 3000.0f
+
 
 // 坐标转换：将世界坐标转换为屏幕像素坐标
 void WorldToScreen(float world_x, float world_y, int* screen_x, int* screen_y) {
@@ -16,7 +14,7 @@ void ScreenToWorld(int screen_x, int screen_y, float* world_x, float* world_y) {
     if (world_y) *world_y = (float)screen_y / game.camera.zoom + game.camera.y;
 }
 
-// 约束摄像机位置与缩放，防止超出 800x600 边界
+// 约束摄像机位置与缩放，防止超出 3000×3000 边界
 static void ClampCamera() {
     int sw = getwidth();
     int sh = getheight();
@@ -72,7 +70,7 @@ void InitCamera() {
     int sw = getwidth();
     int sh = getheight();
 
-    // 计算初始缩放：刚好能完整容纳 800x600 区域
+    // 计算初始缩放：刚好能完整容纳 3000×3000 区域
     float zoom_x = (float)sw / WORLD_WIDTH;
     float zoom_y = (float)sh / WORLD_HEIGHT;
     game.camera.zoom = (zoom_x < zoom_y) ? zoom_x : zoom_y;
