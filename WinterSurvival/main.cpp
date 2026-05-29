@@ -122,7 +122,7 @@ int main() {
         
 
             // --- 【时间解耦】 每日结算逻辑每 1000 毫秒（1秒）执行一次 ---
-            if (current_time - last_settlement_time >= 1000) {
+            if (current_time - last_settlement_time >= 10000) {
 
                 // 【调用组员C的内政引擎】处理饥饿、寒冷、繁衍、升级！
                 DailySettlement();
