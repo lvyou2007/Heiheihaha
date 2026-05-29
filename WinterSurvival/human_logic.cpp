@@ -2,7 +2,7 @@
 #include "human_logic.h"
 #include <stdio.h>   
 #include <stdlib.h>
-
+#include <math.h>
 
 static void RandomName(char* name) {
     const char* first[] = { "勇者", "智者", "迅捷", "沉稳", "狂热" };
@@ -41,9 +41,12 @@ Human* CreateHuman(int base_level) {
         h->atk = (int)(h->atk * 1.5);
         h->def = (int)(h->def * 1.5);
     }
-    // 随机分配坐标
-    h->world_x = (float)(rand() % (int)WORLD_WIDTH);
-    h->world_y = (float)(rand() % (int)WORLD_HEIGHT);
+    // === 核心修改：新生儿坐标主要集中在大熔炉 (1500, 1500) 附近半径 200 像素内 ===
+    float angle = (float)(rand() % 360) * 3.1415926f / 180.0f; // 随机 360 度方向
+    float radius = (float)(rand() % 200);                      // 0 到 200 像素随机半径
+    h->world_x = 1500.0f + cosf(angle) * radius;
+    h->world_y = 1500.0f + sinf(angle) * radius;
+
     return h;
 }
 
@@ -105,18 +108,7 @@ void DailySettlement() {
     while (cur != NULL) {
         Human* next = cur->next;  // 因为可能删除cur，先存下一个
 
-        // === 新增：让人物每天随机朝某个方向走动几步 ===
-       // 随机产生 -10 到 10 之间的世界位移
-        float dx = (float)((rand() % 21) - 10);
-        float dy = (float)((rand() % 21) - 10);
-        cur->world_x += dx;
-        cur->world_y += dy;
-
-        // 限制不要走成出世界边界 (0,0) 到 (800, 600)
-        if (cur->world_x < 0) cur->world_x = 0;
-        if (cur->world_x > 800) cur->world_x = 800;
-        if (cur->world_y < 0) cur->world_y = 0;
-        if (cur->world_y > 600) cur->world_y = 600;
+       
 
         // 1. 饱食度下降（每天-10）
         cur->hunger -= 10;
@@ -149,6 +141,10 @@ void DailySettlement() {
             RemoveHumanFromList(cur);   // 死亡，从链表中删除
             // 注意：cur 已经被 free，不能再访问，但 next 已经保存好了
         }
+
+        //每日根据升级后的建筑指标，自动获得生存资源 ===
+        game.wood += wood_build.produce_rate;  // 根据伐木场等级自动加木材
+        game.coal += mine_build.produce_rate;  // 根据矿场等级自动加煤炭
 
         cur = next;
     }
@@ -236,4 +232,35 @@ Human* GetHoveredHuman(float click_world_x, float click_world_y, float radius) {
         cur = cur->next;
     }
     return closest;
+}
+// === 新增：全图高精平滑散步算法 (60 FPS 每帧调用) ===：由于LCG（线性同余）随机数发生器相关性漂移，人物经常往一个方向运动
+#include <math.h>
+
+// === 升级：全图无漂移、无碰撞干涉的完全随机漫步算法 (60 FPS) ===
+void UpdateHumanPositions() {
+    Human* cur = game.head;
+    while (cur != NULL) {
+        float speed = 1.5f; // 散步速度（适中）
+
+        // 1. 每 2.5 秒 (2500毫秒) 换一次散步方向
+        int time_cycle = (int)(GetTickCount() / 2500);
+
+        // 2. 使用高度离散的数学哈希噪点公式 (Shader 经典算法)
+        // 彻底绕过 MSVC 编译器的 srand 线性相关性 Bug，为每个 ID 产生绝对独立的随机方向
+        double raw = sin(cur->id * 12.9898 + time_cycle * 78.233) * 43758.5453123;
+        double fraction = raw - floor(raw); // 取小数部分 [0.0, 1.0)
+        float angle = (float)(fraction * 2.0 * 3.1415926535); // 转换为 [0, 2*PI] 弧度
+
+        // 3. 平滑应用位移
+        cur->world_x += cosf(angle) * speed;
+        cur->world_y += sinf(angle) * speed;
+
+        // 4. 全图 $3000 \times 3000$ 边界硬约束，防止小人走出世界
+        if (cur->world_x < 100.0f) cur->world_x = 100.0f;
+        if (cur->world_x > 2900.0f) cur->world_x = 2900.0f;
+        if (cur->world_y < 100.0f) cur->world_y = 100.0f;
+        if (cur->world_y > 2900.0f) cur->world_y = 2900.0f;
+
+        cur = cur->next;
+    }
 }

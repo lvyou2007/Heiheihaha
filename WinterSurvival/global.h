@@ -79,3 +79,8 @@ typedef struct GameState {
 } GameState;
 
 extern GameState game;
+// ---------- 全局建筑实例与升级指针声明 ----------
+extern Building mine_build;
+extern Building wood_build;
+extern Building furnace_build;
+extern Building* selected_building; // 指向当前玩家点击选中的建筑 (为 NULL 时不显示弹窗)

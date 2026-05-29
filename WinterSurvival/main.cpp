@@ -5,6 +5,7 @@
 #include "render.h"      // 提供 DrawMainMenu(), DrawWorld(), DrawCityUI(), DrawCombatPanel()
 #include "human_logic.h" // 提供 InitHumanList(), CreateHuman(), AddHumanToList(), DailySettlement(), FreeAllHumans()
 #include "combat_sys.h"  // 提供 ProcessCombatRound()
+#include "ui_panel.h"
 
 #include <Windows.h>     // 提供高精度计时器 API
 #include <stdbool.h>
@@ -16,6 +17,12 @@
 
 // 1. 全局变量定义 (在 global.h 中声明为 extern)
 GameState game;
+
+// 定义建筑实体
+Building mine_build = { 0, 1, 150, 5 };       // 矿场：初始1级，升级需150，日产5
+Building wood_build = { 1, 1, 100, 15 };       // 伐木场：初始1级，升级需100，日产15
+Building furnace_build = { 2, 1, 200, 100 };   // 熔炉：初始1级，升级需200，初始100度
+Building* selected_building = NULL;            // 默认没有选中任何建筑
 
 // ==========================================
 // === 真实游戏数据初始化 (替代之前的假数据) ===
@@ -55,6 +62,8 @@ int main() {
 
     // 初始化 1280x720 像素分辨率的游戏窗口
     initgraph(1280, 720);
+
+    InitRender();//加载贴图
 
     // 启用 EasyX 双缓冲机制，避免画面闪烁
     BeginBatchDraw();
@@ -112,46 +121,14 @@ int main() {
         }
 
         case STATE_CITY: {
-            // DrawWorld(); 
-            // 【修复拖尾问题】：在每一帧绘制前，必须先擦干净上一帧图像
-            cleardevice();
-// ========== 【临时测试代码：可视化大地图】 ==========
-            int screen_x, screen_y;
+            // === 适配：每帧更新一次人类坐标，实现全图丝滑散步 (60 FPS) ===
+            UpdateHumanPositions();
 
-            // 1. 画世界地图中心点 (世界坐标 0, 0)
-            WorldToScreen(0, 0, &screen_x, &screen_y);
-            setlinecolor(RED);  // 红色十字准星
-            line(screen_x - 50, screen_y, screen_x + 50, screen_y);
-            line(screen_x, screen_y - 50, screen_x, screen_y + 50);
-
-            // 2. 画一个分布在世界各地的网格阵列 (测试平移和缩放)
-            setlinecolor(DARKGRAY);
-            for (int wx = -1000; wx <= 1000; wx += 200) {
-                for (int wy = -1000; wy <= 1000; wy += 200) {
-                    WorldToScreen(wx, wy, &screen_x, &screen_y);
-                    // 在屏幕上画个十字代表坐标点
-                    line(screen_x - 5, screen_y, screen_x + 5, screen_y);
-                    line(screen_x, screen_y - 5, screen_x, screen_y + 5);
-
-                    // （可选）如果想看缩放效果更明显，可以画空心圆
-                    // circle(screen_x, screen_y, (int)(10 * game.camera.zoom)); 
-                }
-            }
-
-            // 3. 将组员 C 生成的真实人口坐标画出来！
-            setfillcolor(GREEN);
-            Human* cur = game.head;
-            while (cur != NULL) {
-                WorldToScreen(cur->world_x, cur->world_y, &screen_x, &screen_y);
-                // 把小人画成一个半径随缩放变化的绿色圆点
-                solidcircle(screen_x, screen_y, (int)(5 * game.camera.zoom));
-                cur = cur->next;
-            }
-            // =====================================================
-            // DrawCityUI();  
+            RenderFrame();
+        
 
             // --- 【时间解耦】 每日结算逻辑每 1000 毫秒（1秒）执行一次 ---
-            if (current_time - last_settlement_time >= 1000) {
+            if (current_time - last_settlement_time >= 10000) {
 
                 // 【调用组员C的内政引擎】处理饥饿、寒冷、繁衍、升级！
                 DailySettlement();
@@ -165,8 +142,23 @@ int main() {
         }
 
         case STATE_COMBAT: {
-            // DrawWorld();
-            // DrawCombatPanel();
+
+            // === 适配：战斗中未参战的人员也会继续平滑漫步 ===
+            UpdateHumanPositions();
+            //战斗状态渲染（背景画大地图，顶层覆盖战斗弹窗） ===
+            cleardevice();
+            DrawWorldLayer(); // 绘制背景
+            DrawUI();         // 绘制基础 UI
+
+            // 从战斗模块中获取当前战斗快照
+            int f_count = GetDebugFighterCount();
+            Human** fighters = GetFightersPtr();
+            Monster* boss = GetCurrentBossPtr();
+
+            // 覆盖绘制战斗大弹窗
+            DrawCombatPanel(fighters, f_count, boss);
+
+            FlushBatchDraw();
 
             // --- 【时间解耦】 战斗回合每 500 毫秒（0.5秒）执行一次伤害判定 ---
             if (current_time - last_combat_round_time >= 500) {
