@@ -27,25 +27,43 @@ void InitRender() {
 void DrawWorldLayer() {
     Camera cam = game.camera;
 
-    // 遍历所有人类（双向链表）
+    // --- 1. 先绘制大地图底色（绿地沙盘）以铺满 3000x3000px 视口 ---
+    int world_left, world_top, world_right, world_bottom;
+    WorldToScreen(0, 0, &world_left, &world_top);
+    WorldToScreen(3000.0f, 3000.0f, &world_right, &world_bottom);
+
+    setfillcolor(RGB(34, 110, 34)); // 深森林绿
+    solidrectangle(world_left, world_top, world_right, world_bottom);
+
+    // 绘制 3000x3000px 地图内的经纬参考线（每 500 像素一条格线，方便定位）
+    setlinecolor(RGB(46, 125, 50));
+    for (int i = 500; i < 3000; i += 500) {
+        int lx1, ly1, lx2, ly2;
+        WorldToScreen((float)i, 0, &lx1, &ly1);
+        WorldToScreen((float)i, 3000.0f, &lx2, &ly2);
+        line(lx1, ly1, lx2, ly2);
+
+        WorldToScreen(0, (float)i, &lx1, &ly1);
+        WorldToScreen(3000.0f, (float)i, &lx2, &ly2);
+        line(lx1, ly1, lx2, ly2);
+    }
+
+    // --- 2. 遍历绘制所有人类 (保持原样) ---
     Human* cur = game.head;
     while (cur != NULL) {
         int screen_x, screen_y;
         WorldToScreen(cur->world_x, cur->world_y, &screen_x, &screen_y);
 
-        // 选择贴图（超凡者用金色边框的图）
         IMAGE* img = cur->is_superman ? &img_human_super : &img_human_normal;
         int draw_w = (int)(img->getwidth() * cam.zoom);
         int draw_h = (int)(img->getheight() * cam.zoom);
         putimage(screen_x - draw_w / 2, screen_y - draw_h / 2, draw_w, draw_h, img, 0, 0, SRCCOPY);
 
-        // 名字
         settextstyle(12, 0, _T("宋体"));
         setbkmode(TRANSPARENT);
         settextcolor(WHITE);
-        outtextxy(screen_x - 20, screen_y - draw_h / 2 - 15,cur->name);
+        outtextxy(screen_x - 20, screen_y - draw_h / 2 - 15, cur->name);
 
-        // 血条
         float ratio = (float)cur->hp / cur->max_hp;
         int bar_width = (int)(50 * cam.zoom);
         int bar_height = (int)(6 * cam.zoom);
@@ -54,29 +72,36 @@ void DrawWorldLayer() {
         setfillcolor(RGB(80, 80, 80));
         fillrectangle(bar_left, bar_top, bar_left + bar_width, bar_top + bar_height);
         setfillcolor(RGB(0, 200, 0));
-        fillrectangle(bar_left, bar_top, bar_left + bar_width * ratio, bar_top + bar_height);
+        fillrectangle(bar_left, bar_top, bar_left + (int)(bar_width * ratio), bar_top + bar_height);
 
         cur = cur->next;
     }
 
-    // 绘制建筑（世界坐标固定，可根据实际情况从 game 读取建筑列表）
+    // --- 3. 核心重构：在代码中强制指定建筑物的“物理世界尺寸”，防止爆屏 ---
+    const int MINE_SIZE = 200;      // 强制限制矿场大小为世界坐标下的 200x200
+    const int WOOD_SIZE = 200;      // 强制限制伐木场大小为世界坐标下的 200x200
+    const int FURNACE_SIZE = 450;   // 强制限制核心大熔炉大小为世界坐标下的 450x450
+
+    // 建筑 A：大熔炉，完美固定在 3000x3000px 大地图的正中心点 (1500, 1500)
+    int fx, fy;
+    WorldToScreen(1500.0f, 1500.0f, &fx, &fy);
+    int draw_w = (int)(FURNACE_SIZE * game.camera.zoom);
+    int draw_h = (int)(FURNACE_SIZE * game.camera.zoom);
+    putimage(fx - draw_w / 2, fy - draw_h / 2, draw_w, draw_h, &img_furnace, 0, 0, SRCCOPY);
+
+    // 建筑 B：矿场，散落在左上方世界坐标 (600, 800) 处
     int mx, my;
-    WorldToScreen(500, 300, &mx, &my);
-    int draw_w = (int)(img_mine.getwidth() * game.camera.zoom);
-    int draw_h = (int)(img_mine.getheight() * game.camera.zoom);
+    WorldToScreen(600.0f, 800.0f, &mx, &my);
+    draw_w = (int)(MINE_SIZE * game.camera.zoom);
+    draw_h = (int)(MINE_SIZE * game.camera.zoom);
     putimage(mx - draw_w / 2, my - draw_h / 2, draw_w, draw_h, &img_mine, 0, 0, SRCCOPY);
 
+    // 建筑 C：伐木场，散落在右下方世界坐标 (2200, 2100) 处
     int wx, wy;
-    WorldToScreen(800, 400, &wx, &wy);
-    draw_w = (int)(img_woodcamp.getwidth() * game.camera.zoom);
-    draw_h = (int)(img_woodcamp.getheight() * game.camera.zoom);
+    WorldToScreen(2200.0f, 2100.0f, &wx, &wy);
+    draw_w = (int)(WOOD_SIZE * game.camera.zoom);
+    draw_h = (int)(WOOD_SIZE * game.camera.zoom);
     putimage(wx - draw_w / 2, wy - draw_h / 2, draw_w, draw_h, &img_woodcamp, 0, 0, SRCCOPY);
-
-    int fx, fy;
-    WorldToScreen(350, 600, &fx, &fy);
-    draw_w = (int)(img_furnace.getwidth() * game.camera.zoom);
-    draw_h = (int)(img_furnace.getheight() * game.camera.zoom);
-    putimage(fx - draw_w / 2, fy - draw_h / 2, draw_w, draw_h, &img_furnace, 0, 0, SRCCOPY);
 }
 
 void DrawUI() {
