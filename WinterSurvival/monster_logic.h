@@ -1,7 +1,6 @@
 ﻿#pragma once
 // monster_logic.h
 // 独立的野怪生态系统接口 (不影响组员D的任何代码)
-#pragma once
 #include "global.h"
 
 // 刷新野怪
