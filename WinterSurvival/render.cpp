@@ -168,3 +168,9 @@ void DrawUI() {
         DrawHoverTooltip(game.hovered_target, pt.x, pt.y);
     }
 }
+void RenderFrame() {
+    cleardevice();
+    DrawWorldLayer();
+    DrawUI();
+    FlushBatchDraw();
+}
