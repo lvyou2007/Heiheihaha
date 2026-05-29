@@ -10,3 +10,5 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy);
 
 //建筑面板
 void DrawUpgradePanel(Building* b);
+
+void DrawMonsterTooltip(Monster* target, int mouse_screen_x, int mouse_screen_y);

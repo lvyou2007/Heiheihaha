@@ -235,6 +235,14 @@ void DrawUI() {
         DrawHoverTooltip(game.hovered_target, pt.x, pt.y);
     }
 
+    // === 【核心新增】：悬浮提示框 (野怪) ===
+    if (game.hovered_monster != NULL) {
+        POINT pt;
+        GetCursorPos(&pt);
+        ScreenToClient(GetHWnd(), &pt);
+        DrawMonsterTooltip(game.hovered_monster, pt.x, pt.y);
+    }
+
     // ==================== 2. 新增：渲染选中的升级弹窗 ====================
     if (selected_building != NULL) {
         DrawUpgradePanel(selected_building);

@@ -48,9 +48,64 @@ void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
     _stprintf_s(buf, _T("HP: %d/%d"), target->hp, target->max_hp);
     outtextxy(left + 10, top + 100, buf);
 
+    // 2. 【核心新增】：经验进度条 (深蓝色)
+    float exp_ratio = (float)target->exp / 100.0f;
+    setfillcolor(RGB(60, 60, 60));
+    fillrectangle(left + 10, top + 122, left + 10 + bar_w, top + 122 + bar_h);
+    setfillcolor(RGB(0, 150, 255)); // 科技蓝
+    fillrectangle(left + 10, top + 122, left + 10 + (int)(bar_w * exp_ratio), top + 122 + bar_h);
+
+    _stprintf_s(buf, _T("EXP: %d/100"), target->exp);
+    outtextxy(left + 10, top + 137, buf);
+
     // 饱食度
     _stprintf_s(buf, _T("饱食度: %d"), target->hunger);
     outtextxy(left + 10, top + 130, buf);
+}
+
+// === 【核心新增整个函数】：野怪专属的半透明红色敌对悬浮面板 ===
+void DrawMonsterTooltip(Monster* target, int mouse_screen_x, int mouse_screen_y) {
+    if (target == NULL) return;
+
+    int tip_w = 220, tip_h = 135;
+    int left = mouse_screen_x + 15;
+    int top = mouse_screen_y + 15;
+
+    if (left + tip_w > 1280) left = mouse_screen_x - tip_w - 15;
+    if (top + tip_h > 720)   top = mouse_screen_y - tip_h - 15;
+
+    // 暗红色底框，象征敌对/野生生态
+    setfillcolor(RGB(50, 25, 25));
+    fillroundrect(left, top, left + tip_w, top + tip_h, 10, 10);
+    setlinecolor(RGB(200, 50, 50));
+    roundrect(left, top, left + tip_w, top + tip_h, 10, 10);
+
+    settextstyle(14, 0, _T("宋体"));
+
+    // 名字颜色判定
+    TCHAR name_buf[64];
+    _stprintf_s(name_buf, _T("%S"), target->name);
+    if (target->type == MONSTER_AGGRESSIVE) settextcolor(RGB(255, 69, 0));
+    else settextcolor(RGB(255, 215, 0));
+    outtextxy(left + 10, top + 10, name_buf);
+
+    settextcolor(WHITE);
+    TCHAR buf[64];
+    _stprintf_s(buf, _T("类型: %s"), target->type == MONSTER_AGGRESSIVE ? _T("暴虐野兽 (敌对)") : _T("温顺驯鹿 (无害)"));
+    outtextxy(left + 10, top + 35, buf);
+    _stprintf_s(buf, _T("攻击: %d  防御: %d"), target->atk, target->def);
+    outtextxy(left + 10, top + 60, buf);
+
+    // 生命血条 (红色)
+    float ratio = (float)target->hp / target->max_hp;
+    int bar_w = 180, bar_h = 12;
+    setfillcolor(RGB(80, 80, 80));
+    fillrectangle(left + 10, top + 85, left + 10 + bar_w, top + 85 + bar_h);
+    setfillcolor(RGB(220, 0, 0));
+    fillrectangle(left + 10, top + 85, left + 10 + (int)(bar_w * ratio), top + 85 + bar_h);
+
+    _stprintf_s(buf, _T("HP: %d/%d"), target->hp, target->max_hp);
+    outtextxy(left + 10, top + 100, buf);
 }
 
 void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
