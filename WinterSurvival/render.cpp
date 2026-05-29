@@ -18,6 +18,8 @@ static IMAGE img_mine, img_woodcamp, img_furnace;
 static IMAGE img_map;         // 地图背景
 static IMAGE img_wood_icon;   // 木头图标
 static IMAGE img_coal_icon;   // 煤炭图标
+static IMAGE img_monster;     // 仅供给饿狼使用
+static IMAGE img_meat_icon;    // 食物图标
 
 // 完美支持透明通道的 PNG 绘制函数 (彻底消除黑边与黑块)
 void drawPNG(int x, int y, int w, int h, IMAGE* pSrcImg) {
@@ -38,6 +40,8 @@ void InitRender() {
     loadimage(&img_map, _T("res/map.png"));
     loadimage(&img_wood_icon, _T("res/wood.png"));
     loadimage(&img_coal_icon, _T("res/coal.png"));
+    loadimage(&img_monster, _T("res/monster.png"));
+    loadimage(&img_meat_icon, _T("res/meat.png"));
 }
 
 void DrawWorldLayer() {
@@ -125,6 +129,49 @@ void DrawWorldLayer() {
     draw_w = (int)(WOOD_SIZE * game.camera.zoom);
     draw_h = (int)(WOOD_SIZE * game.camera.zoom);
     drawPNG(wx - draw_w / 2, wy - draw_h / 2, draw_w, draw_h, &img_woodcamp);
+
+    // === 核心新增：绘制野怪。无攻击性的驯鹿画成黄色圆点，攻击性的饿狼画成 monster.png 贴图 ===
+    Monster* m_cur = game.monster_head;
+    while (m_cur != NULL) {
+        int screen_x, screen_y;
+        WorldToScreen(m_cur->world_x, m_cur->world_y, &screen_x, &screen_y);
+
+        if (m_cur->type == MONSTER_AGGRESSIVE) {
+            // A. 暴雪饿狼：使用精美的 PNG 贴图绘制
+            int m_base_size = 75;
+            int draw_w = (int)(m_base_size * cam.zoom);
+            int draw_h = (int)(m_base_size * cam.zoom);
+            drawPNG(screen_x - draw_w / 2, screen_y - draw_h / 2, draw_w, draw_h, &img_monster);
+        }
+        else {
+            // B. 温顺驯鹿：画成精致的金黄色圆点，体现“可狩猎肉类”
+            int radius = (int)(10 * cam.zoom);
+            if (radius < 2) radius = 2;
+            setfillcolor(RGB(255, 215, 0)); // 金黄色
+            solidcircle(screen_x, screen_y, radius);
+        }
+
+        // 绘制野怪名字 (饿狼红橙色，驯鹿黄色)
+        settextstyle(12, 0, _T("宋体"));
+        setbkmode(TRANSPARENT);
+        if (m_cur->type == MONSTER_AGGRESSIVE) settextcolor(RGB(255, 69, 0));
+        else settextcolor(RGB(255, 215, 0));
+
+        TCHAR m_name_buf[64];
+        _stprintf_s(m_name_buf, _T("%S"), m_cur->name);
+        outtextxy(screen_x - 20, screen_y - 25, m_name_buf);
+
+        // 绘制红色生命条
+        float ratio = (float)m_cur->hp / m_cur->max_hp;
+        int bar_width = (int)(50 * cam.zoom);
+        int bar_height = (int)(5 * cam.zoom);
+        setfillcolor(RGB(80, 80, 80));
+        fillrectangle(screen_x - bar_width / 2, screen_y - 12, screen_x + bar_width / 2, screen_y - 12 + bar_height);
+        setfillcolor(RGB(200, 0, 0)); // 红色
+        fillrectangle(screen_x - bar_width / 2, screen_y - 12, screen_x - bar_width / 2 + (int)(bar_width * ratio), screen_y - 12 + bar_height);
+
+        m_cur = m_cur->next;
+    }
 }
 
 void DrawUI() {
@@ -151,6 +198,11 @@ void DrawUI() {
     _stprintf_s(buf, _T("人口: %d"), game.population);
     outtextxy(150, 20, buf);
 
+    // === 修复与升级：在左上角食物前画上 meat.png 图标 ===
+    drawPNG(20, 68, 22, 22, &img_meat_icon);
+    _stprintf_s(buf, _T("食物: %d"), game.meat);
+    outtextxy(50, 70, buf); // 文本向后错开，避开图标
+
     // === 绘制左下半透明磨砂温度面板 ===
     int temp_left = 15;
     int temp_top = 665;
@@ -172,7 +224,7 @@ void DrawUI() {
         game.env_temp, game.furnace_temp, effective_temp);
 
     settextcolor(effective_temp < 10 ? RGB(255, 100, 100) : RGB(100, 255, 100)); // 低于10度亮红警报
-    settextstyle(15, 0, _T("微软雅黑"));
+    settextstyle(18, 0, _T("微软雅黑"));
     outtextxy(temp_left + 15, temp_top + 13, buf);
 
     // 悬浮提示框

@@ -134,6 +134,8 @@
     <ClInclude Include="combat_sys.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="human_logic.h" />
+    <ClInclude Include="monster_logic.cpp" />
+    <ClInclude Include="monster_logic.h" />
     <ClInclude Include="render.h" />
     <ClInclude Include="ui_panel.h" />
   </ItemGroup>

@@ -391,19 +391,3 @@ Human** GetFightersPtr(void) {
 Monster* GetCurrentBossPtr(void) {
     return &current_boss;
 }
-// 追加到 combat_sys.cpp 尾部，用于测试模块读取状态
-//void DebugSpawnBoss(const char* name, int hp, int atk, int def, int meat, int exp) {
-  //  strcpy(current_boss.name, name);
-    //current_boss.max_hp = hp;
-    //current_boss.hp = hp;
-    //current_boss.atk = atk;
-    //current_boss.def = def;
-    //current_boss.meat_reward = meat;
-    //current_boss.exp_reward = exp;
-//}
-
-//int GetDebugBossHp() { return current_boss.hp; }
-//int GetDebugBossMaxHp() { return current_boss.max_hp; }
-//const char* GetDebugBossName() { return current_boss.name; }
-//int GetDebugFighterCount() { return fighter_count; }
-//Human* GetDebugFighter(int idx) { return fighters[idx]; }

@@ -6,6 +6,7 @@
 #include "human_logic.h" // 提供 InitHumanList(), CreateHuman(), AddHumanToList(), DailySettlement(), FreeAllHumans()
 #include "combat_sys.h"  // 提供 ProcessCombatRound()
 #include "ui_panel.h"
+#include "monster_logic.h"
 
 #include <Windows.h>     // 提供高精度计时器 API
 #include <stdbool.h>
@@ -125,26 +126,21 @@ int main() {
             break;
         }
 
-        case STATE_CITY: {
-            // === 适配：每帧更新一次人类坐标，实现全图丝滑散步 (60 FPS) ===
-            UpdateHumanPositions();
+        case STATE_CITY:
+            UpdateHumanPositions();      // 人类 60 帧散步
+            UpdateMonsters();            // === 核心新增1：野怪 60 帧智能追猎与漫步 ===
+            CheckAndRemoveDeadMonster(); // === 核心新增2：若战斗胜利，在此自动擦除死怪 ===
 
-            RenderFrame();
-        
+            RenderFrame();               // 渲染
 
-            // --- 【时间解耦】 每日结算逻辑每 1000 毫秒（1秒）执行一次 ---
+            // 每日结算 (10秒)
             if (current_time - last_settlement_time >= 10000) {
-
-                // 【调用组员C的内政引擎】处理饥饿、寒冷、繁衍、升级！
                 DailySettlement();
-
-                last_settlement_time = current_time; // 刷新结算时间戳
-
-                // 【调试输出】在控制台打印当前存活人口，证明后台逻辑在跑！
-                printf("度过了一天！当前存活人数: %d 人\n", game.population);
+                SpawnMonsters();         // === 核心新增3：每日概率刷新野怪 ===
+                last_settlement_time = current_time;
             }
             break;
-        }
+        
 
         case STATE_COMBAT: {
 

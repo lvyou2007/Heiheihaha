@@ -42,6 +42,7 @@ typedef struct Monster {
     int exp_reward;         // 击杀经验值
     struct Monster* prev;
     struct Monster* next;
+
 } Monster;
 
 // ---------- 建筑数据结构 ----------
@@ -76,6 +77,7 @@ typedef struct GameState {
     // 悬浮判定目标
     Human* hovered_target;
     Monster* hovered_monster; // 新增：当前鼠标悬浮的野怪
+    Monster current_boss;
 } GameState;
 
 extern GameState game;
