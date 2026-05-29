@@ -1,6 +1,5 @@
 ﻿// main.cpp
-// 最终大一统集成版 (大地图即时遭遇战 RTS 模式 + 免菜单直入版)
-// 彻底解决 LNK2005 冲突，无需 monster_logic 模块，编译 100% 通过
+// 最终大一统集成版 (免菜单直入 + 人类自动集结战友、围攻饿狼的 RTS 即时战略版)
 #define _CRT_SECURE_NO_WARNINGS
 #include "global.h"
 #include "camera.h"
@@ -23,13 +22,56 @@ Building wood_build = { 1, 1, 100, 15 };
 Building furnace_build = { 2, 1, 200, 100 };
 Building* selected_building = NULL;
 
-// ---------- 2. 人类大地图平滑游走 + 自动追猎黄色驯鹿 AI (60 FPS) ----------
+// ---------- 2. 人类游走、追鹿、以及【核心新增：战友遇袭全军集结包抄】 AI ----------
 void UpdateHumanPositions() {
+    // 1. 扫描整个战场，检查当前是否有任何一个战友正在被“暴雪饿狼”近身攻击
+    Monster* active_fight_wolf = NULL;
+    float fight_x = 0, fight_y = 0;
+
+    Monster* m_find = game.monster_head;
+    while (m_find != NULL) {
+        if (m_find->type == MONSTER_AGGRESSIVE && m_find->hp > 0) {
+            Human* h_check = game.head;
+            while (h_check != NULL) {
+                if (h_check->hp > 0) {
+                    float d_x = h_check->world_x - m_find->world_x;
+                    float d_y = h_check->world_y - m_find->world_y;
+                    // 如果狼距离小人小于 100 像素，视为战役打响
+                    if (d_x * d_x + d_y * d_y <= 100.0f * 100.0f) {
+                        active_fight_wolf = m_find;
+                        fight_x = m_find->world_x;
+                        fight_y = m_find->world_y;
+                        break;
+                    }
+                }
+                h_check = h_check->next;
+            }
+        }
+        if (active_fight_wolf) break; // 优先响应第一处战场
+        m_find = m_find->next;
+    }
+
+    // 2. 驱动每个人类个体的行为
     Human* cur = game.head;
     while (cur != NULL) {
         float speed = 1.2f;
 
-        // 1. 扫描周围 300 像素范围内是否有最近的温顺驯鹿 (MONSTER_PASSIVE)
+        // 判定 A：【民兵集结指令】如果前方正在打仗，且自身处于集结半径 (600像素) 内，放弃一切事务，急速（2.0移速）赶往现场！
+        if (active_fight_wolf != NULL) {
+            float f_dx = fight_x - cur->world_x;
+            float f_dy = fight_y - cur->world_y;
+            float f_dist = sqrtf(f_dx * f_dx + f_dy * f_dy);
+
+            if (f_dist < 600.0f) {
+                cur->world_x += (f_dx / f_dist) * 2.0f; // 集结冲锋
+                cur->world_y += (f_dy / f_dist) * 2.0f;
+
+                cur = cur->next;
+                continue; // 成功分发集结，跳过日常散步和捕鹿
+            }
+        }
+
+        // 判定 B：若无战争，扫描周围 300 像素内是否有可猎杀的驯鹿 (MONSTER_PASSIVE)
         Monster* target_deer = NULL;
         float min_hunt_dist = 300.0f;
 
@@ -47,9 +89,8 @@ void UpdateHumanPositions() {
             m_cur = m_cur->next;
         }
 
-        // 2. 行为决策
         if (target_deer != NULL) {
-            // A. 【狩猎姿态】：朝着猎物方向以 1.5 倍高速度 (1.8f) 狂奔追击
+            // 【狩猎追击】：以 1.5 倍高速度 (1.8f) 追击野鹿
             float dx = target_deer->world_x - cur->world_x;
             float dy = target_deer->world_y - cur->world_y;
             float dist = sqrtf(dx * dx + dy * dy);
@@ -57,13 +98,12 @@ void UpdateHumanPositions() {
             cur->world_x += (dx / dist) * 1.8f;
             cur->world_y += (dy / dist) * 1.8f;
 
-            // 贴身撕咬/狩猎
             if (dist < 25.0f) {
                 target_deer->hp -= cur->atk; // 小人进行攻击
 
                 if (target_deer->hp <= 0) {
-                    game.meat += target_deer->meat_reward; // 食物爆仓
-                    cur->exp += target_deer->exp_reward;   // 获得升级经验值
+                    game.meat += target_deer->meat_reward; // 爆肉
+                    cur->exp += target_deer->exp_reward;   // 拿经验
 
                     if (cur->exp >= 100) {
                         cur->level++;
@@ -88,7 +128,7 @@ void UpdateHumanPositions() {
             }
         }
         else {
-            // B. 【休闲姿态】：周围无猎物，使用漫步算法
+            // C. 【休闲漫步】
             int time_cycle = (int)(GetTickCount() / 2500);
             double raw = sin(cur->id * 12.9898 + time_cycle * 78.233) * 43758.5453123;
             double fraction = raw - floor(raw);
@@ -107,7 +147,7 @@ void UpdateHumanPositions() {
     }
 }
 
-// ---------- 3. 野怪 AI 刷新与大地图即时遭遇战 (RTS模式) ----------
+// ---------- 3. 野怪 AI 刷新与大地图【核心新增：联军多人围殴机制】 ----------
 
 static int GetAverageHumanLevel() {
     if (game.population == 0) return 1;
@@ -153,9 +193,10 @@ void SpawnMonsters() {
             else {
                 m->type = MONSTER_AGGRESSIVE;
                 strcpy(m->name, "暴雪饿狼");
-                m->max_hp = m->hp = 100 + (avg_level - 1) * 25;
-                m->atk = 28 + (avg_level - 1) * 4;
-                m->def = 8 + (avg_level - 1) * 3;
+                // === 数值削减：将饿狼初始属性大幅度削减，确保前期小人们能战胜它 ===
+                m->max_hp = m->hp = 55 + (avg_level - 1) * 15; // 基础生命 55 
+                m->atk = 12 + (avg_level - 1) * 3;             // 基础攻击降为 12 点
+                m->def = 3 + (avg_level - 1) * 2;              // 基础防御降为 3 点
                 m->meat_reward = 40 + (avg_level - 1) * 10;
                 m->exp_reward = 45 + (avg_level - 1) * 8;
             }
@@ -182,7 +223,7 @@ void SpawnMonsters() {
     }
 }
 
-// 智能追击与大地图即时遭遇战 (RTS模式，500ms进行一轮均摊伤害结算)
+// 智能追击与大地图即时遭遇战 (每 500ms 结算一轮伤害)
 void UpdateMonsters(bool combat_tick) {
     Monster* cur = game.monster_head;
     while (cur != NULL) {
@@ -225,34 +266,54 @@ void UpdateMonsters(bool combat_tick) {
                 cur->world_x += (dx / dist) * 1.5f;
                 cur->world_y += (dy / dist) * 1.5f;
 
-                // === RTS 模式：直接在大地图上发生贴身攻防，无需弹窗！每 500ms 结算一轮伤害 ===
+                // === RTS 模式：直接在大地图上发生贴身攻防，每 500ms 进行一轮多人均摊伤害和群殴围攻 ===
                 if (dist < 25.0f && combat_tick) {
-                    // 1. 狼咬人
+
+                    // 1. 狼狠狠地咬一口被追击的那个人类
                     int dmg_to_human = cur->atk - closest_human->def;
                     if (dmg_to_human < 1) dmg_to_human = 1;
                     closest_human->hp -= dmg_to_human;
 
-                    // 2. 人反击
-                    int dmg_to_monster = closest_human->atk - cur->def;
-                    if (dmg_to_monster < 1) dmg_to_monster = 1;
-                    cur->hp -= dmg_to_monster;
+                    // 2. 【核心新增：多人联军围攻逻辑】
+                    // 遍历所有存活的人类，只要他们赶到了现场（距离这只饿狼小于 30 像素），就会同时挥刀反击围攻饿狼！
+                    Human* h_fight = game.head;
+                    while (h_fight != NULL) {
+                        if (h_fight->hp > 0) {
+                            float f_dx = h_fight->world_x - cur->world_x;
+                            float f_dy = h_fight->world_y - cur->world_y;
+                            float f_dist = sqrtf(f_dx * f_dx + f_dy * f_dy);
+
+                            if (f_dist <= 30.0f) { // 成功加入围攻圈
+                                int dmg_to_monster = h_fight->atk - cur->def;
+                                if (dmg_to_monster < 1) dmg_to_monster = 1;
+                                cur->hp -= dmg_to_monster; // 多人围攻，饿狼血量急剧下降！
+
+                                h_fight->exp += 2; // 围殴过程中获得助攻微量经验
+                            }
+                        }
+                        h_fight = h_fight->next;
+                    }
 
                     // 3. 击毙结算
                     if (cur->hp <= 0) {
-                        game.meat += cur->meat_reward; // 爆肉
-                        closest_human->exp += cur->exp_reward; // 拿经验
+                        game.meat += cur->meat_reward; // 爆肉食
+                        closest_human->exp += cur->exp_reward; // 猎手拿走主要经验
 
-                        // 升级
-                        if (closest_human->exp >= 100) {
-                            closest_human->level++;
-                            closest_human->exp -= 100;
-                            closest_human->max_hp += 20;
-                            closest_human->atk += 5;
-                            closest_human->def += 3;
-                            closest_human->hp = closest_human->max_hp;
+                        // 人类升级判定
+                        Human* h_up = game.head;
+                        while (h_up) {
+                            if (h_up->exp >= 100) {
+                                h_up->level++;
+                                h_up->exp -= 100;
+                                h_up->max_hp += 20;
+                                h_up->atk += 5;
+                                h_up->def += 3;
+                                h_up->hp = h_up->max_hp;
+                            }
+                            h_up = h_up->next;
                         }
 
-                        // 将死狼从链表移除
+                        // 将这只死狼安全从链表抹去
                         if (cur->prev != NULL) cur->prev->next = cur->next;
                         else game.monster_head = cur->next;
 
@@ -359,7 +420,7 @@ int main() {
         switch (game.current_state) {
 
         case STATE_CITY: {
-            // 1. 人类平滑游走、自动追猎
+            // 1. 人类平滑游走、且靠近黄色驯鹿或遭遇战争时会自动跑步包抄围歼！
             UpdateHumanPositions();
 
             // 2. 500ms 一周期的大地图即时伤害判定节拍
@@ -369,7 +430,7 @@ int main() {
                 last_combat_round_time = current_time;
             }
 
-            // 3. 野怪 AI、大地图撕咬交互
+            // 3. 野怪 AI 与大地图遭遇围殴
             UpdateMonsters(combat_tick);
 
             // 4. 渲染大世界
@@ -383,8 +444,6 @@ int main() {
             }
             break;
         }
-
-                       // === 完美的极简：已彻底移除 STATE_COMBAT 回合制弹窗分支 ===
 
         case STATE_GAMEOVER: {
             FreeAllHumans();
