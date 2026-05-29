@@ -156,16 +156,6 @@ void DrawUI() {
     _stprintf_s(buf, _T("环境温度: %d C  |  熔炉: %d C  |  体感: %d C"), game.env_temp, game.furnace_temp, effective_temp);
     outtextxy(10, 680, buf);
 
-    // 底部升级按钮
-    setfillcolor(RGB(70, 70, 150));
-    fillrectangle(100, 650, 200, 690);
-    fillrectangle(250, 650, 350, 690);
-    fillrectangle(400, 650, 500, 690);
-    settextcolor(BLACK);
-    settextstyle(14, 0, _T("宋体"));
-    outtextxy(120, 665, _T("升级矿场"));
-    outtextxy(270, 665, _T("升级伐木场"));
-    outtextxy(420, 665, _T("升级熔炉"));
 
     // 悬浮提示框
     if (game.hovered_target != NULL) {
@@ -173,6 +163,11 @@ void DrawUI() {
         GetCursorPos(&pt);
         ScreenToClient(GetHWnd(), &pt);
         DrawHoverTooltip(game.hovered_target, pt.x, pt.y);
+    }
+
+    // ==================== 2. 新增：渲染选中的升级弹窗 ====================
+    if (selected_building != NULL) {
+        DrawUpgradePanel(selected_building);
     }
 }
 

@@ -134,3 +134,112 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
     settextcolor(WHITE);
     outtextxy(left + panel_w - 28, top + 12, _T("X"));
 }
+
+// 追加到 ui_panel.cpp 尾部
+void DrawUpgradePanel(Building* b) {
+    if (b == NULL) return;
+
+    // 弹窗固定居中尺寸：400x300
+    int w = 400, h = 300;
+    int left = (1280 - w) / 2; // 440
+    int top = (720 - h) / 2;   // 210
+
+    // 1. 绘制面板背景与边框
+    setfillcolor(RGB(25, 30, 40));
+    fillroundrect(left, top, left + w, top + h, 15, 15);
+    setlinecolor(RGB(0, 200, 255));
+    roundrect(left, top, left + w, top + h, 15, 15);
+
+    // 2. 绘制标题和当前等级
+    setbkmode(TRANSPARENT);
+    settextstyle(20, 0, _T("黑体"));
+    settextcolor(RGB(0, 255, 255));
+
+    TCHAR title[64];
+    if (b->type == 0) _stprintf_s(title, _T("【 矿 场 控 制 枢 纽 】"));
+    else if (b->type == 1) _stprintf_s(title, _T("【 伐 木 场 控 制 枢 纽 】"));
+    else if (b->type == 2) _stprintf_s(title, _T("【 能 源 大 熔 炉 】"));
+    outtextxy(left + 60, top + 25, title);
+
+    settextstyle(16, 0, _T("宋体"));
+    settextcolor(WHITE);
+    TCHAR lv_buf[32];
+    if (b->level >= 3) _stprintf_s(lv_buf, _T("当前等级: MAX"));
+    else _stprintf_s(lv_buf, _T("当前等级: %d 级"), b->level);
+    outtextxy(left + 40, top + 75, lv_buf);
+
+    // 3. 绘制核心指标属性对比
+    TCHAR attr_buf1[128];
+    TCHAR attr_buf2[128];
+    settextcolor(RGB(200, 200, 200));
+
+    if (b->type == 0) { // 矿场
+        _stprintf_s(attr_buf1, _T("当前煤炭生产速率: %d / 每天"), b->produce_rate);
+        if (b->level < 3) {
+            int next_rate = (b->level == 1) ? 12 : 25;
+            _stprintf_s(attr_buf2, _T("升级后生产速率: %d / 每天 (+%d)"), next_rate, next_rate - b->produce_rate);
+        }
+    }
+    else if (b->type == 1) { // 伐木场
+        _stprintf_s(attr_buf1, _T("当前木材生产速率: %d / 每天"), b->produce_rate);
+        if (b->level < 3) {
+            int next_rate = (b->level == 1) ? 30 : 50;
+            _stprintf_s(attr_buf2, _T("升级后生产速率: %d / 每天 (+%d)"), next_rate, next_rate - b->produce_rate);
+        }
+    }
+    else if (b->type == 2) { // 熔炉
+        _stprintf_s(attr_buf1, _T("当前核芯辐射温度: %d C (提供体感 +%d C)"), b->produce_rate, (int)(b->produce_rate * 0.2));
+        if (b->level < 3) {
+            int next_temp = (b->level == 1) ? 200 : 350;
+            _stprintf_s(attr_buf2, _T("升级后辐射温度: %d C (体感 +%d C)"), next_temp, (int)(next_temp * 0.2));
+        }
+    }
+    outtextxy(left + 40, top + 115, attr_buf1);
+    if (b->level < 3) {
+        settextcolor(RGB(100, 255, 100)); // 升级提升属性显示为绿色
+        outtextxy(left + 40, top + 145, attr_buf2);
+    }
+
+    // 4. 绘制升级开销
+    settextcolor(WHITE);
+    TCHAR cost_buf[128];
+    if (b->level >= 3) {
+        _stprintf_s(cost_buf, _T("升级所需木材: MAX"));
+    }
+    else {
+        _stprintf_s(cost_buf, _T("升级所需木材: %d  (当前拥有: %d)"), b->cost_wood, game.wood);
+    }
+    outtextxy(left + 40, top + 185, cost_buf);
+
+    // 5. 绘制底部交互按钮
+    int btn_x = left + 100; // 540
+    int btn_y = top + 230;  // 440
+    int btn_w = 200, btn_h = 40;
+
+    if (b->level >= 3) {
+        setfillcolor(RGB(80, 80, 80)); // 满级灰色按钮
+        fillroundrect(btn_x, btn_y, btn_x + btn_w, btn_y + btn_h, 8, 8);
+        settextcolor(RGB(180, 180, 180));
+        outtextxy(btn_x + 55, btn_y + 12, _T("已升满 (MAX)"));
+    }
+    else {
+        // 判断资源是否足够
+        if (game.wood >= b->cost_wood) {
+            setfillcolor(RGB(0, 150, 255)); // 蓝色高亮升级按钮
+            settextcolor(WHITE);
+        }
+        else {
+            setfillcolor(RGB(80, 50, 50));  // 资源不足暗红色按钮
+            settextcolor(RGB(180, 150, 150));
+        }
+        fillroundrect(btn_x, btn_y, btn_x + btn_w, btn_y + btn_h, 8, 8);
+        outtextxy(btn_x + 65, btn_y + 12, _T("点击升级"));
+    }
+
+    // 6. 绘制右上角 "X" 关闭圆圈
+    setfillcolor(RGB(150, 50, 50));
+    fillcircle(left + w - 20, top + 20, 12); // 圆心在 820, 230
+    settextcolor(WHITE);
+    settextstyle(12, 0, _T("Arial"));
+    outtextxy(left + w - 24, top + 13, _T("X"));
+}

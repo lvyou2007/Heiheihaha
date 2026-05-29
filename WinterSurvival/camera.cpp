@@ -1,5 +1,5 @@
 ﻿#include "camera.h"
-
+extern Human* GetHoveredHuman(float click_world_x, float click_world_y, float radius);
 
 
 // 坐标转换：将世界坐标转换为屏幕像素坐标
@@ -94,8 +94,107 @@ void ProcessInput() {
 
     while (peekmessage(&msg, EM_MOUSE)) {
 
-        // --- 1. 处理鼠标拖拽 ---
-// 修改后：直接响应右键，不需要按 Ctrl 也不用按中键
+        // --- 1. 新增：处理鼠标左键点击（点击建筑与升级交互） ---
+        if (msg.message == WM_LBUTTONDOWN) {
+
+            // A. 如果升级弹窗已经打开，优先拦截并判定弹窗内部的点击事件
+            if (selected_building != NULL) {
+                // 弹窗绝对坐标：left=440, top=210, right=840, bottom=510
+
+                // 1. 检测是否点击了右上角的 "X" 关闭圆圈 (圆心在 820, 230，半径 12)
+                int dx = msg.x - 820;
+                int dy = msg.y - 230;
+                if (dx * dx + dy * dy <= 12 * 12) {
+                    selected_building = NULL; // 关闭弹窗
+                    continue;
+                }
+
+                // 2. 检测是否点击了底部的 "升级" 按钮 (540, 440) -> (740, 480)
+                if (msg.x >= 540 && msg.x <= 740 && msg.y >= 440 && msg.y <= 480) {
+                    if (selected_building->level < 3) {
+                        if (game.wood >= selected_building->cost_wood) {
+                            // 扣除木材并升级
+                            game.wood -= selected_building->cost_wood;
+                            selected_building->level++;
+
+                            // 根据新等级，更新对应建筑的指标与下一级消耗
+                            if (selected_building->type == 0) { // 矿场
+                                if (selected_building->level == 2) {
+                                    selected_building->produce_rate = 12;
+                                    selected_building->cost_wood = 300;
+                                }
+                                else if (selected_building->level == 3) {
+                                    selected_building->produce_rate = 25;
+                                    selected_building->cost_wood = 9999; // 满级标记
+                                }
+                            }
+                            else if (selected_building->type == 1) { // 伐木场
+                                if (selected_building->level == 2) {
+                                    selected_building->produce_rate = 30;
+                                    selected_building->cost_wood = 250;
+                                }
+                                else if (selected_building->level == 3) {
+                                    selected_building->produce_rate = 50;
+                                    selected_building->cost_wood = 9999;
+                                }
+                            }
+                            else if (selected_building->type == 2) { // 熔炉
+                                if (selected_building->level == 2) {
+                                    selected_building->produce_rate = 200; // 熔炉温度变200
+                                    game.furnace_temp = 200;               // 同步全局状态
+                                    selected_building->cost_wood = 450;
+                                }
+                                else if (selected_building->level == 3) {
+                                    selected_building->produce_rate = 350; // 熔炉温度变350
+                                    game.furnace_temp = 350;
+                                    selected_building->cost_wood = 9999;
+                                }
+                            }
+                        }
+                        else {
+                            MessageBox(GetHWnd(), _T("储备木材不足，无法升级！"), _T("提示"), MB_OK | MB_ICONWARNING);
+                        }
+                    }
+                    continue;
+                }
+
+                // 3. 点击弹窗外部，自动关闭弹窗
+                if (msg.x < 440 || msg.x > 840 || msg.y < 210 || msg.y > 510) {
+                    selected_building = NULL;
+                }
+                continue; // 拦截，不触发地图建筑选择
+            }
+
+            // B. 弹窗未打开时，检测是否点击了世界地图上的实体建筑物
+            float world_click_x, world_click_y;
+            ScreenToWorld(msg.x, msg.y, &world_click_x, &world_click_y);
+
+            // 1. 判定大熔炉 (中心在 1500, 1500，世界判定半径 225)
+            float dx = world_click_x - 1500.0f;
+            float dy = world_click_y - 1500.0f;
+            if (dx * dx + dy * dy <= 225.0f * 225.0f) {
+                selected_building = &furnace_build;
+                continue;
+            }
+
+            // 2. 判定矿场 (中心在 600, 800，世界判定半径 100)
+            dx = world_click_x - 600.0f;
+            dy = world_click_y - 800.0f;
+            if (dx * dx + dy * dy <= 100.0f * 100.0f) {
+                selected_building = &mine_build;
+                continue;
+            }
+
+            // 3. 判定伐木场 (中心在 2200, 2100，世界判定半径 100)
+            dx = world_click_x - 2200.0f;
+            dy = world_click_y - 2100.0f;
+            if (dx * dx + dy * dy <= 100.0f * 100.0f) {
+                selected_building = &wood_build;
+                continue;
+            }
+        }
+
+        // --- 2. 处理鼠标右键拖拽 (保持原样) ---
         if (msg.message == WM_RBUTTONDOWN) {
             is_dragging = true;
             last_mouse_x = msg.x;
@@ -115,24 +214,23 @@ void ProcessInput() {
                 last_mouse_x = msg.x;
                 last_mouse_y = msg.y;
 
-                ClampCamera(); // 拖拽后应用边界限制
+                ClampCamera();
             }
+
+            float world_mouse_x, world_mouse_y;
+            ScreenToWorld(msg.x, msg.y, &world_mouse_x, &world_mouse_y);
+            game.hovered_target = GetHoveredHuman(world_mouse_x, world_mouse_y, 25.0f);
         }
 
-        // --- 2. 处理滚轮缩放 ---
+        // --- 3. 处理滚轮缩放 (保持原样) ---
         else if (msg.message == WM_MOUSEWHEEL) {
             float zoom_factor = 1.1f;
             float old_zoom = game.camera.zoom;
             float new_zoom = old_zoom;
 
-            if (msg.wheel > 0) {
-                new_zoom *= zoom_factor;
-            }
-            else if (msg.wheel < 0) {
-                new_zoom /= zoom_factor;
-            }
+            if (msg.wheel > 0) new_zoom *= zoom_factor;
+            else if (msg.wheel < 0) new_zoom /= zoom_factor;
 
-            // 此处不直接在这里限制缩放，而是让 ClampCamera 统一处理边界和最小缩放
             if (new_zoom != old_zoom) {
                 float mouse_world_x = (float)msg.x / old_zoom + game.camera.x;
                 float mouse_world_y = (float)msg.y / old_zoom + game.camera.y;
@@ -141,7 +239,7 @@ void ProcessInput() {
                 game.camera.x = mouse_world_x - (float)msg.x / new_zoom;
                 game.camera.y = mouse_world_y - (float)msg.y / new_zoom;
 
-                ClampCamera(); // 缩放后应用边界限制
+                ClampCamera();
             }
         }
     }
