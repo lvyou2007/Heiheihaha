@@ -127,19 +127,26 @@ void DrawUI() {
     fillrectangle(10, 10, 260, 110);
     settextcolor(WHITE);
     settextstyle(16, 0, _T("宋体"));
-    char buf[100];
-    sprintf_s(buf, "木头: %d", game.wood);
+
+    // === 修复点 1：必须声明自适应宽字符数组 TCHAR，不能写成 char ===
+    TCHAR buf[100];
+
+    // === 修复点 2：改用 _stprintf_s，且字符串文字必须用 _T() 包裹 ===
+    _stprintf_s(buf, _T("木头: %d"), game.wood);
     outtextxy(20, 20, buf);
-    sprintf_s(buf, "煤炭: %d", game.coal);
+
+    _stprintf_s(buf, _T("煤炭: %d"), game.coal);
     outtextxy(20, 45, buf);
-    sprintf_s(buf, "食物: %d", game.meat);
+
+    _stprintf_s(buf, _T("肉食: %d"), game.meat); // 改为肉食
     outtextxy(20, 70, buf);
-    sprintf_s(buf, "人口: %d", game.population);
+
+    _stprintf_s(buf, _T("人口: %d"), game.population);
     outtextxy(150, 20, buf);
 
     // 体感温度自适应计算
     int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2);
-    sprintf_s(buf, "环境温度: %d C  |  熔炉: %d C  |  体感: %d C", game.env_temp, game.furnace_temp, effective_temp);
+    _stprintf_s(buf, _T("环境温度: %d C  |  熔炉: %d C  |  体感: %d C"), game.env_temp, game.furnace_temp, effective_temp);
     outtextxy(10, 680, buf);
 
     // 底部升级按钮
@@ -160,11 +167,4 @@ void DrawUI() {
         ScreenToClient(GetHWnd(), &pt);
         DrawHoverTooltip(game.hovered_target, pt.x, pt.y);
     }
-}
-
-void RenderFrame() {
-    cleardevice();
-    DrawWorldLayer();
-    DrawUI();
-    FlushBatchDraw();
 }
