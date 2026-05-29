@@ -1,6 +1,6 @@
 ﻿// combat_sys.cpp
 // 组员D: 动态战斗引擎 + 序列化存档/读档
-// 适配最新的 global.h (2026-05-26版本)
+// 已完美适配 2026-05-26 最终版 global.h 并修复链接与类型 Bug
 #define _CRT_SECURE_NO_WARNINGS
 #include "combat_sys.h"
 #include "global.h"
@@ -10,20 +10,26 @@
 #include <time.h>
 #include <math.h>
 
+// ---------- 战斗系统私有静态状态 (不污染全局 global.h) ----------
+static Human* fighters[100];
+static int fighter_count = 0;
+static Monster current_boss; // 当前交战的怪物数据
+
+// 声明外部函数（调用组员 C 在 human_logic.cpp 中编写的内存清理函数，避免多重定义冲突）
+extern void FreeAllHumans(void);
+
 // ---------- 辅助函数：随机抽取 fighters ----------
-// 从 game.human_list 中抽取 need_cnt 个存活且尚未在 fighters 数组中的成员
-// 将新抽取的成员存入 game.fighters 数组，从 start_idx 位置开始存放
-// 返回实际抽取人数
 static int RandomSelectFighters(int need_cnt, int start_idx) {
-    // 收集所有候选（存活且尚未在 fighters 中）
     Human* candidates[1024];
     int cand_cnt = 0;
-    Human* cur = game.human_list;
+
+    // 适配最新 global.h：使用 game.head 代替原来的 game.human_list
+    Human* cur = game.head;
     while (cur) {
         if (cur->hp > 0) {
             int already = 0;
-            for (int i = 0; i < game.fighter_count; i++) {
-                if (game.fighters[i] == cur) {
+            for (int i = 0; i < fighter_count; i++) {
+                if (fighters[i] == cur) {
                     already = 1;
                     break;
                 }
@@ -35,11 +41,11 @@ static int RandomSelectFighters(int need_cnt, int start_idx) {
     }
     int available = cand_cnt;
     if (need_cnt > available) need_cnt = available;
-    // 随机抽取 need_cnt 个不同的人 (Fisher-Yates)
+
+    // Fisher-Yates 随机打乱抽取
     for (int i = 0; i < need_cnt; i++) {
         int idx = rand() % (cand_cnt - i);
-        game.fighters[start_idx + i] = candidates[idx];
-        // 交换到末尾避免重复
+        fighters[start_idx + i] = candidates[idx];
         Human* tmp = candidates[idx];
         candidates[idx] = candidates[cand_cnt - i - 1];
         candidates[cand_cnt - i - 1] = tmp;
@@ -49,12 +55,13 @@ static int RandomSelectFighters(int need_cnt, int start_idx) {
 
 // 计算当前 fighters 中所有存活人类的平均血量百分比
 static float AvgHpPercent(void) {
-    if (game.fighter_count == 0) return 100.0f;
+    if (fighter_count == 0) return 100.0f;
     float sum = 0.0f;
     int alive = 0;
-    for (int i = 0; i < game.fighter_count; i++) {
-        if (game.fighters[i]->hp > 0) {
-            sum += (game.fighters[i]->hp / game.fighters[i]->max_hp) * 100.0f;
+    for (int i = 0; i < fighter_count; i++) {
+        if (fighters[i]->hp > 0) {
+            // 显式转换类型计算百分比
+            sum += ((float)fighters[i]->hp / fighters[i]->max_hp) * 100.0f;
             alive++;
         }
     }
@@ -66,13 +73,9 @@ static float AvgHpPercent(void) {
 
 void ProcessCombatRound(void) {
     // 如果没有怪物或怪物已死，清空战斗状态并返回
-    if (game.current_boss.hp <= 0) {
-        // 恢复所有参战人员状态（如果有）
-        for (int i = 0; i < game.fighter_count; i++) {
-            if (game.fighters[i]->hp > 0)
-                game.fighters[i]->state = STATE_IDLE;
-        }
-        game.fighter_count = 0;
+    if (current_boss.hp <= 0) {
+        // 由于最新版 Human 删去了 state 变量，移除了原有的 cur->state = STATE_IDLE 逻辑
+        fighter_count = 0;
         return;
     }
 
@@ -84,61 +87,69 @@ void ProcessCombatRound(void) {
 
     // 初次进入战斗时初始化 fighters (尚未有参战人员)
     static int support_triggered = 0;
-    if (game.fighter_count == 0) {
+    if (fighter_count == 0) {
         int total_alive = 0;
-        Human* cur = game.human_list;
+        Human* cur = game.head; // 改为使用 game.head
         while (cur) {
             if (cur->hp > 0) total_alive++;
             cur = cur->next;
         }
-        if (total_alive == 0) return; // 无人可战，无法战斗
+        if (total_alive == 0) return; // 无人可战，退出
 
         int need = (int)(total_alive * 0.3f);
         if (need < 1) need = 1;
-        game.fighter_count = RandomSelectFighters(need, 0);
-        // 标记参战人员状态
-        for (int i = 0; i < game.fighter_count; i++) {
-            game.fighters[i]->state = STATE_FIGHTING;
-        }
+        fighter_count = RandomSelectFighters(need, 0);
         support_triggered = 0; // 重置支援标记
     }
 
-    // 回合制战斗（一轮攻防）
-    // 人类攻击阶段
+    // 回合制战斗：人类攻击阶段
     float total_atk = 0;
-    for (int i = 0; i < game.fighter_count; i++) {
-        if (game.fighters[i]->hp > 0)
-            total_atk += game.fighters[i]->atk;
+    for (int i = 0; i < fighter_count; i++) {
+        if (fighters[i]->hp > 0)
+            total_atk += fighters[i]->atk;
     }
-    float damage = total_atk - game.current_boss.def;
+    float damage = total_atk - current_boss.def;
     if (damage < 0) damage = 0;
-    game.current_boss.hp -= damage;
+    current_boss.hp -= (int)damage; // 属性转换为 int 处理
 
-    // 如果怪物死亡，结束战斗
-    if (game.current_boss.hp <= 0) {
-        // 恢复所有参战人员状态
-        for (int i = 0; i < game.fighter_count; i++) {
-            if (game.fighters[i]->hp > 0)
-                game.fighters[i]->state = STATE_IDLE;
+    // 如果野怪被击杀，结束战斗并进行丰厚的战利品结算
+    if (current_boss.hp <= 0) {
+        // 1. 战利品增加食物资源（肉类）
+        game.meat += current_boss.meat_reward;
+
+        // 2. 存活的参战人员平分/获得经验值
+        for (int i = 0; i < fighter_count; i++) {
+            if (fighters[i]->hp > 0) {
+                fighters[i]->exp += current_boss.exp_reward;
+                // 升级机制判定
+                if (fighters[i]->exp >= 100) {
+                    fighters[i]->level++;
+                    fighters[i]->exp -= 100;
+                    fighters[i]->max_hp += 20;
+                    fighters[i]->atk += 5;
+                    fighters[i]->def += 3;
+                    fighters[i]->hp = fighters[i]->max_hp; // 升级回满生命
+                }
+            }
         }
-        game.fighter_count = 0;
+        fighter_count = 0;
         support_triggered = 0;
         return;
     }
 
     // 野怪反击（均摊伤害）
     int alive_fighters = 0;
-    for (int i = 0; i < game.fighter_count; i++) {
-        if (game.fighters[i]->hp > 0) alive_fighters++;
+    for (int i = 0; i < fighter_count; i++) {
+        if (fighters[i]->hp > 0) alive_fighters++;
     }
     if (alive_fighters > 0) {
-        float dmg_per_human = game.current_boss.atk / alive_fighters;
-        for (int i = 0; i < game.fighter_count; i++) {
-            if (game.fighters[i]->hp > 0) {
-                float real_damage = dmg_per_human - game.fighters[i]->def;
+        float dmg_per_human = (float)current_boss.atk / alive_fighters;
+        for (int i = 0; i < fighter_count; i++) {
+            if (fighters[i]->hp > 0) {
+                float real_damage = dmg_per_human - fighters[i]->def;
                 if (real_damage < 0) real_damage = 0;
-                game.fighters[i]->hp -= real_damage;
-                if (game.fighters[i]->hp < 0) game.fighters[i]->hp = 0;
+                fighters[i]->hp -= (int)real_damage;
+                if (fighters[i]->hp < 0) fighters[i]->hp = 0;
             }
         }
     }
@@ -147,14 +158,13 @@ void ProcessCombatRound(void) {
     if (!support_triggered) {
         float avg_percent = AvgHpPercent();
         if (avg_percent < 60.0f) {
-            // 统计剩余未参战的存活人类数量
             int remaining = 0;
-            Human* cur = game.human_list;
+            Human* cur = game.head; // 改为 game.head
             while (cur) {
                 if (cur->hp > 0) {
                     int already = 0;
-                    for (int i = 0; i < game.fighter_count; i++) {
-                        if (game.fighters[i] == cur) {
+                    for (int i = 0; i < fighter_count; i++) {
+                        if (fighters[i] == cur) {
                             already = 1;
                             break;
                         }
@@ -166,9 +176,9 @@ void ProcessCombatRound(void) {
             if (remaining > 0) {
                 int add_cnt = (int)(remaining * 0.3f);
                 if (add_cnt < 1) add_cnt = 1;
-                int new_cnt = RandomSelectFighters(add_cnt, game.fighter_count);
+                int new_cnt = RandomSelectFighters(add_cnt, fighter_count);
                 if (new_cnt > 0) {
-                    game.fighter_count += new_cnt;
+                    fighter_count += new_cnt;
                     support_triggered = 1;
                 }
             }
@@ -177,75 +187,76 @@ void ProcessCombatRound(void) {
 
     // 检查是否所有参战人类都已死亡
     int any_alive = 0;
-    for (int i = 0; i < game.fighter_count; i++) {
-        if (game.fighters[i]->hp > 0) {
+    for (int i = 0; i < fighter_count; i++) {
+        if (fighters[i]->hp > 0) {
             any_alive = 1;
             break;
         }
     }
     if (!any_alive) {
-        // 全军覆没，战斗失败，怪物依然存活
-        for (int i = 0; i < game.fighter_count; i++) {
-            game.fighters[i]->state = STATE_IDLE;
-        }
-        game.fighter_count = 0;
+        fighter_count = 0;
         support_triggered = 0;
     }
 }
 
-// ---------- 序列化数据结构（不含指针）----------
+// ---------- 序列化数据结构（不含指针，100%贴合最新 global.h）----------
 typedef struct {
     int id;
     char name[20];
     float world_x, world_y;
-    float hp, max_hp;
-    float hunger;
-    float atk, def;
+    int hp, max_hp;
+    int hunger;
+    int atk, def;
+    int exp;
     int level;
-    HumanType type;
-    HumanState state;
+    int is_superman;
 } HumanSaveData;
 
 typedef struct {
     char name[20];
-    float hp, max_hp;
-    float atk, def;
+    int hp, max_hp;
+    int atk, def;
+    int meat_reward;
+    int exp_reward;
 } MonsterSaveData;
 
-// 保存游戏状态到文件，成功返回 true，失败返回 false
+// 保存游戏状态到文件
 bool SaveGame(const char* filepath) {
     FILE* fp = fopen(filepath, "wb");
     if (!fp) return false;
 
-    // 1. 保存基础类型数据（不包含指针）
+    // 1. 保存基础类型数据（改写为 int 与 meat，贴合最新宪法）
     fwrite(&game.current_state, sizeof(AppState), 1, fp);
     fwrite(&game.camera, sizeof(Camera), 1, fp);
     fwrite(&game.wood, sizeof(int), 1, fp);
     fwrite(&game.coal, sizeof(int), 1, fp);
-    fwrite(&game.food, sizeof(int), 1, fp);
-    fwrite(&game.env_temp, sizeof(float), 1, fp);
-    fwrite(&game.furnace_temp, sizeof(float), 1, fp);
-    fwrite(&game.total_humans, sizeof(int), 1, fp);
-    fwrite(&game.fighter_count, sizeof(int), 1, fp);
-    // 保存 current_boss
+    fwrite(&game.meat, sizeof(int), 1, fp);      // 修改为 meat
+    fwrite(&game.env_temp, sizeof(int), 1, fp);   // 修改为 int
+    fwrite(&game.furnace_temp, sizeof(int), 1, fp);// 修改为 int
+    fwrite(&game.population, sizeof(int), 1, fp); // 修改为 population统计
+
+    // 保存战斗模块特有的静态变量
+    fwrite(&fighter_count, sizeof(int), 1, fp);
+    for (int i = 0; i < fighter_count; i++) {
+        fwrite(&fighters[i]->id, sizeof(int), 1, fp); // 仅写入 ID，用于读档时重连
+    }
+
+    // 保存当前战斗的怪物数据
     MonsterSaveData boss_data;
-    strcpy(boss_data.name, game.current_boss.name);
-    boss_data.hp = game.current_boss.hp;
-    boss_data.max_hp = game.current_boss.max_hp;
-    boss_data.atk = game.current_boss.atk;
-    boss_data.def = game.current_boss.def;
+    strcpy(boss_data.name, current_boss.name);
+    boss_data.hp = current_boss.hp;
+    boss_data.max_hp = current_boss.max_hp;
+    boss_data.atk = current_boss.atk;
+    boss_data.def = current_boss.def;
+    boss_data.meat_reward = current_boss.meat_reward;
+    boss_data.exp_reward = current_boss.exp_reward;
     fwrite(&boss_data, sizeof(MonsterSaveData), 1, fp);
 
     // 2. 保存人类链表数据
-    int human_count = 0;
-    Human* cur = game.human_list;
-    while (cur) {
-        human_count++;
-        cur = cur->next;
-    }
+    int human_count = game.population;
     fwrite(&human_count, sizeof(int), 1, fp);
-    cur = game.human_list;
-    for (int i = 0; i < human_count; i++) {
+    Human* cur = game.head; // 改为 game.head
+    while (cur) {
         HumanSaveData data;
         data.id = cur->id;
         strcpy(data.name, cur->name);
@@ -256,9 +267,9 @@ bool SaveGame(const char* filepath) {
         data.hunger = cur->hunger;
         data.atk = cur->atk;
         data.def = cur->def;
+        data.exp = cur->exp;
         data.level = cur->level;
-        data.type = cur->type;
-        data.state = cur->state;
+        data.is_superman = cur->is_superman;
         fwrite(&data, sizeof(HumanSaveData), 1, fp);
         cur = cur->next;
     }
@@ -267,53 +278,49 @@ bool SaveGame(const char* filepath) {
     return true;
 }
 
-// 释放所有人类节点
-void FreeAllHumans(void) {
-    Human* cur = game.human_list;
-    while (cur) {
-        Human* next = cur->next;
-        free(cur);
-        cur = next;
-    }
-    game.human_list = NULL;
-    game.total_humans = 0;
-}
-
+// 读取存档并反序列化
 bool LoadGame(const char* filepath) {
     FILE* fp = fopen(filepath, "rb");
     if (!fp) return false;
 
-    // 1. 读取基础数据
+    // 1. 读取基础数据（完全匹配 int 类型）
     fread(&game.current_state, sizeof(AppState), 1, fp);
     fread(&game.camera, sizeof(Camera), 1, fp);
     fread(&game.wood, sizeof(int), 1, fp);
     fread(&game.coal, sizeof(int), 1, fp);
-    fread(&game.food, sizeof(int), 1, fp);
-    fread(&game.env_temp, sizeof(float), 1, fp);
-    fread(&game.furnace_temp, sizeof(float), 1, fp);
-    fread(&game.total_humans, sizeof(int), 1, fp);
-    fread(&game.fighter_count, sizeof(int), 1, fp);
-    // 读 current_boss
+    fread(&game.meat, sizeof(int), 1, fp);       // 读取 meat
+    fread(&game.env_temp, sizeof(int), 1, fp);
+    fread(&game.furnace_temp, sizeof(int), 1, fp);
+    fread(&game.population, sizeof(int), 1, fp);  // 读取 population
+
+    // 读取战斗特有状态
+    int saved_fighter_count;
+    fread(&saved_fighter_count, sizeof(int), 1, fp);
+    int saved_fighter_ids[100];
+    for (int i = 0; i < saved_fighter_count; i++) {
+        fread(&saved_fighter_ids[i], sizeof(int), 1, fp);
+    }
+
+    // 读取怪物数据
     MonsterSaveData boss_data;
     fread(&boss_data, sizeof(MonsterSaveData), 1, fp);
-    strcpy(game.current_boss.name, boss_data.name);
-    game.current_boss.hp = boss_data.hp;
-    game.current_boss.max_hp = boss_data.max_hp;
-    game.current_boss.atk = boss_data.atk;
-    game.current_boss.def = boss_data.def;
+    strcpy(current_boss.name, boss_data.name);
+    current_boss.hp = boss_data.hp;
+    current_boss.max_hp = boss_data.max_hp;
+    current_boss.atk = boss_data.atk;
+    current_boss.def = boss_data.def;
+    current_boss.meat_reward = boss_data.meat_reward;
+    current_boss.exp_reward = boss_data.exp_reward;
 
-    // 指针字段初始化
+    // 清空重置指针字段
     game.hovered_target = NULL;
-    // 清空 fighters 数组（战斗状态不恢复，读档后由主逻辑重新触发战斗）
-    for (int i = 0; i < game.fighter_count; i++) {
-        game.fighters[i] = NULL;
-    }
-    game.fighter_count = 0;   // 强制清空
+    game.hovered_monster = NULL;
 
     // 2. 读取人类数量并重建链表
     int human_count;
     fread(&human_count, sizeof(int), 1, fp);
-    // 释放旧链表
+
+    // 释放本地旧链表（调用 human_logic 中的释放函数，避免多重定义冲突）
     FreeAllHumans();
 
     Human* prev = NULL;
@@ -325,7 +332,6 @@ bool LoadGame(const char* filepath) {
             fclose(fp);
             return false;
         }
-        // 逐成员赋值，避免复合字面量语法错误
         new_human->id = data.id;
         strcpy(new_human->name, data.name);
         new_human->world_x = data.world_x;
@@ -335,9 +341,9 @@ bool LoadGame(const char* filepath) {
         new_human->hunger = data.hunger;
         new_human->atk = data.atk;
         new_human->def = data.def;
+        new_human->exp = data.exp;
         new_human->level = data.level;
-        new_human->type = data.type;
-        new_human->state = data.state;
+        new_human->is_superman = data.is_superman;
         new_human->prev = prev;
         new_human->next = NULL;
 
@@ -345,9 +351,25 @@ bool LoadGame(const char* filepath) {
             prev->next = new_human;
         }
         else {
-            game.human_list = new_human;
+            game.head = new_human; // 指向头指针
         }
         prev = new_human;
+    }
+    game.tail = prev; // 恢复双向链表的尾指针
+
+    // 3. 【核心技术点：重连战斗中人员的指针】
+    // 读档后，旧的地址已经失效。此处根据刚才读取的 ID，重新绑定参战人员的真实内存指针
+    fighter_count = 0;
+    for (int i = 0; i < saved_fighter_count; i++) {
+        int target_id = saved_fighter_ids[i];
+        Human* curr = game.head;
+        while (curr) {
+            if (curr->id == target_id) {
+                fighters[fighter_count++] = curr;
+                break;
+            }
+            curr = curr->next;
+        }
     }
 
     fclose(fp);

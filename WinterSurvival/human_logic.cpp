@@ -126,8 +126,9 @@ void DailySettlement() {
         }
 
         // 2. 温度影响（如果熔炉等级低，温度 < 10 就扣血）
-        if (game.current_temp < 10) {
-            cur->hp -= 3;
+        int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2); // 计算体感温度
+        if (effective_temp < 10) {
+            cur->hp -= 3; // 只有体感温度低于 10 度时才会冻伤扣血
         }
 
         // 3. 经验升级（满100经验升级）
