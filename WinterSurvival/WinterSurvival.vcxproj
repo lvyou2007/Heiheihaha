@@ -141,7 +141,12 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="combat_sys.cpp" />
     <ClCompile Include="human_logic.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="main.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="render.cpp" />
     <ClCompile Include="ui_panel.cpp" />
   </ItemGroup>

@@ -31,7 +31,8 @@ void InitGameData() {
     game.wood = 100;
     game.coal = 50;
     game.meat = 50;
-    game.env_temp = 20;
+    game.env_temp = -30;     // 极寒环境底噪温度为 -30 度
+    game.furnace_temp = 200;  // 熔炉初始燃烧温度为 200 度
 
     // 3. 调用组员 C 的真实逻辑：初始化空链表 (这步替代了旧的 human_list = NULL)
     InitHumanList();
