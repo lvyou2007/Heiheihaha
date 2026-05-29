@@ -115,6 +115,9 @@ int main() {
         }
 
         case STATE_CITY: {
+            // === 适配：每帧更新一次人类坐标，实现全图丝滑散步 (60 FPS) ===
+            UpdateHumanPositions();
+
             RenderFrame();
         
 
@@ -133,6 +136,9 @@ int main() {
         }
 
         case STATE_COMBAT: {
+
+            // === 适配：战斗中未参战的人员也会继续平滑漫步 ===
+            UpdateHumanPositions();
             //战斗状态渲染（背景画大地图，顶层覆盖战斗弹窗） ===
             cleardevice();
             DrawWorldLayer(); // 绘制背景

@@ -2,7 +2,7 @@
 #include "human_logic.h"
 #include <stdio.h>   
 #include <stdlib.h>
-
+#include <math.h>
 
 static void RandomName(char* name) {
     const char* first[] = { "勇者", "智者", "迅捷", "沉稳", "狂热" };
@@ -41,9 +41,12 @@ Human* CreateHuman(int base_level) {
         h->atk = (int)(h->atk * 1.5);
         h->def = (int)(h->def * 1.5);
     }
-    // 随机分配坐标
-    h->world_x = (float)(rand() % (int)WORLD_WIDTH);
-    h->world_y = (float)(rand() % (int)WORLD_HEIGHT);
+    // === 核心修改：新生儿坐标主要集中在大熔炉 (1500, 1500) 附近半径 200 像素内 ===
+    float angle = (float)(rand() % 360) * 3.1415926f / 180.0f; // 随机 360 度方向
+    float radius = (float)(rand() % 200);                      // 0 到 200 像素随机半径
+    h->world_x = 1500.0f + cosf(angle) * radius;
+    h->world_y = 1500.0f + sinf(angle) * radius;
+
     return h;
 }
 
@@ -236,4 +239,29 @@ Human* GetHoveredHuman(float click_world_x, float click_world_y, float radius) {
         cur = cur->next;
     }
     return closest;
+}
+// === 新增：全图高精平滑散步算法 (60 FPS 每帧调用) ===
+void UpdateHumanPositions() {
+    Human* cur = game.head;
+    while (cur != NULL) {
+        float speed = 1.2f; // 适中移动速度（每帧移动 1.2 像素）
+
+        // 动态时钟差：结合人类 ID 与系统时间，使每个人每 2.5 秒独立、随机地改变一次散步方向
+        int seed = cur->id + (int)(GetTickCount() / 2500);
+        srand(seed);
+
+        float angle = (float)(rand() % 360) * 3.1415926f / 180.0f;
+
+        // 平滑位移
+        cur->world_x += cosf(angle) * speed;
+        cur->world_y += sinf(angle) * speed;
+
+        // 全图 $3000 \times 3000$ 边界硬约束，防止小人走出世界
+        if (cur->world_x < 50.0f) cur->world_x = 50.0f;
+        if (cur->world_x > 2950.0f) cur->world_x = 2950.0f;
+        if (cur->world_y < 50.0f) cur->world_y = 50.0f;
+        if (cur->world_y > 2950.0f) cur->world_y = 2950.0f;
+
+        cur = cur->next;
+    }
 }
