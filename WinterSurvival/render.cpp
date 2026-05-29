@@ -110,25 +110,29 @@ void DrawUI() {
     fillrectangle(10, 10, 260, 110);
     settextcolor(WHITE);
     settextstyle(16, 0, _T("宋体"));
-    char buf[100];
-    sprintf(buf, "木头: %d", game.wood);
+
+    // === 修复点：将 char 改为自适应的 TCHAR 数组 ===
+    TCHAR buf[100];
+
+    // === 修复点：改用自适应的 _stprintf_s 和 _T 宏占位符 ===
+    _stprintf_s(buf, _T("木头: %d"), game.wood);
     outtextxy(20, 20, buf);
-    sprintf(buf, "煤炭: %d", game.coal);
+
+    _stprintf_s(buf, _T("煤炭: %d"), game.coal);
     outtextxy(20, 45, buf);
-    sprintf(buf, "食物: %d", game.meat);
+
+    _stprintf_s(buf, _T("肉食: %d"), game.meat); // 改为 meat
     outtextxy(20, 70, buf);
-    sprintf(buf, "人口: %d", game.population);
+
+    _stprintf_s(buf, _T("人口: %d"), game.population);
     outtextxy(150, 20, buf);
 
-    // 温度
-    sprintf(buf, "当前温度: %d", game.env_temp);
-    outtextxy(10, 680, buf);
-    // 修复：使用环境和熔炉自适应计算体感温度
+    // 温度 (结合熔炉热量进行自适应体感温度计算)
     int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2);
-    sprintf_s(buf, "环境温度: %d C  |  熔炉: %d C  |  体感: %d C", game.env_temp, game.furnace_temp, effective_temp);
+    _stprintf_s(buf, _T("环境温度: %d C  |  熔炉: %d C  |  体感: %d C"), game.env_temp, game.furnace_temp, effective_temp);
     outtextxy(10, 680, buf);
 
-    // 底部升级按钮（绝对坐标）
+    // 底部升级按钮
     setfillcolor(RGB(70, 70, 150));
     fillrectangle(100, 650, 200, 690);
     fillrectangle(250, 650, 350, 690);
@@ -141,17 +145,16 @@ void DrawUI() {
 
     // 悬浮提示框
     if (game.hovered_target != NULL) {
-        POINT pt;                      // 定义一个 POINT 结构体变量
-        GetCursorPos(&pt);             // 获取鼠标屏幕坐标（正确用法）
-        ScreenToClient(GetHWnd(), &pt);// 转换为窗口客户区坐标
+        POINT pt;
+        GetCursorPos(&pt);
+        ScreenToClient(GetHWnd(), &pt);
         DrawHoverTooltip(game.hovered_target, pt.x, pt.y);
     }
-
+}
     // 注意：战斗面板由组员D在战斗循环中自行调用 DrawCombatPanel，
     // 不在这里自动绘制，因为 GameState 中没有 fighters 和 current_boss。
     // 如果你希望在 UI 层自动检测战斗状态，可以让组员A添加一个标志，
     // 但根据当前 global.h，战斗面板由调用者控制更合理。
-}
 
 void RenderFrame() {
     cleardevice();
