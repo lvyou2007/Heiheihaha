@@ -1,5 +1,5 @@
 ﻿// main.cpp
-// 最终大一统集成版 (免菜单直入版)：包含游戏核心循环、双缓冲、状态机以及完整的野怪智能 AI 与生态系统
+// 最终大一统集成版 (免菜单直入 + 人类自动狩猎自循环版)
 #define _CRT_SECURE_NO_WARNINGS
 #include "global.h"
 #include "camera.h"
@@ -12,13 +12,11 @@
 #include <math.h>
 #include <stdlib.h>
 
-// 链接 Windows 多媒体库以提升 Sleep 精度
 #pragma comment(lib, "winmm.lib")
 
 // ---------- 1. 全局变量实体定义 ----------
 GameState game;
 
-// 建筑配置自适应 1~3 级数值平衡
 Building mine_build = { 0, 1, 150, 5 };
 Building wood_build = { 1, 1, 100, 15 };
 Building furnace_build = { 2, 1, 200, 100 };
@@ -26,9 +24,8 @@ Building* selected_building = NULL;
 
 // ---------- 2. 核心集成：原本属于野怪模块的全部 AI 算法实体 ----------
 
-static int active_combat_monster_id = 0; // 记录当前交战野怪 ID
+static int active_combat_monster_id = 0;
 
-// 计算当前人类平均等级
 static int GetAverageHumanLevel() {
     if (game.population == 0) return 1;
     int sum = 0;
@@ -40,7 +37,94 @@ static int GetAverageHumanLevel() {
     return sum / game.population;
 }
 
-// 刷新野怪 (数量与总人口正相关，温顺动物高刷新率，解决挨饿问题)
+// === 核心新增：人类 60 帧自动索敌、高速追击并狩猎黄色驯鹿的 AI 算法 ===
+void UpdateHumanPositions() {
+    Human* cur = game.head;
+    while (cur != NULL) {
+        float speed = 1.2f; // 基础散步移速
+
+        // 1. 扫描周围 300 像素范围内是否有最近的温顺驯鹿 (MONSTER_PASSIVE)
+        Monster* target_deer = NULL;
+        float min_hunt_dist = 300.0f; // 索敌半径
+
+        Monster* m_cur = game.monster_head;
+        while (m_cur != NULL) {
+            if (m_cur->type == MONSTER_PASSIVE && m_cur->hp > 0) {
+                float dx = m_cur->world_x - cur->world_x;
+                float dy = m_cur->world_y - cur->world_y;
+                float dist = sqrtf(dx * dx + dy * dy);
+                if (dist < min_hunt_dist) {
+                    min_hunt_dist = dist;
+                    target_deer = m_cur; // 锁定猎物
+                }
+            }
+            m_cur = m_cur->next;
+        }
+
+        // 2. 行为分发
+        if (target_deer != NULL) {
+            // A. 【狩猎姿态】：朝着猎物方向以 1.5 倍高速度 (1.8f) 狂奔追击
+            float dx = target_deer->world_x - cur->world_x;
+            float dy = target_deer->world_y - cur->world_y;
+            float dist = sqrtf(dx * dx + dy * dy);
+
+            cur->world_x += (dx / dist) * 1.8f;
+            cur->world_y += (dy / dist) * 1.8f;
+
+            // 贴身撕咬/狩猎 (距离小于 25 像素)
+            if (dist < 25.0f) {
+                target_deer->hp -= cur->atk; // 小人进行攻击
+
+                // 如果成功击杀驯鹿
+                if (target_deer->hp <= 0) {
+                    game.meat += target_deer->meat_reward; // 食物爆仓
+                    cur->exp += target_deer->exp_reward;   // 猎手获得升级经验值
+
+                    // 经验满 100 升级
+                    if (cur->exp >= 100) {
+                        cur->level++;
+                        cur->exp -= 100;
+                        cur->max_hp += 20;
+                        cur->atk += 5;
+                        cur->def += 3;
+                        cur->hp = cur->max_hp; // 升级血量全满
+                    }
+
+                    // 从大世界中抹除被击杀的驯鹿
+                    Monster* temp = target_deer;
+                    if (temp->prev != NULL) temp->prev->next = temp->next;
+                    else game.monster_head = temp->next;
+
+                    if (temp->next != NULL) temp->next->prev = temp->prev;
+                    else game.monster_tail = temp->prev;
+
+                    free(temp);
+                    game.monster_count--;
+                }
+            }
+        }
+        else {
+            // B. 【休闲姿态】：周围无猎物，使用无相关性正弦哈希漫步在大地图漫步
+            int time_cycle = (int)(GetTickCount() / 2500);
+            double raw = sin(cur->id * 12.9898 + time_cycle * 78.233) * 43758.5453123;
+            double fraction = raw - floor(raw);
+            float angle = (float)(fraction * 2.0 * 3.1415926535);
+
+            cur->world_x += cosf(angle) * speed;
+            cur->world_y += sinf(angle) * speed;
+        }
+
+        // 大地图边界硬核位移限位
+        if (cur->world_x < 100.0f) cur->world_x = 100.0f;
+        if (cur->world_x > 2900.0f) cur->world_x = 2900.0f;
+        if (cur->world_y < 100.0f) cur->world_y = 100.0f;
+        if (cur->world_y > 2900.0f) cur->world_y = 2900.0f;
+
+        cur = cur->next;
+    }
+}
+
+// 刷新野怪 (数量与总人口正相关，温顺动物高刷新率)
 void SpawnMonsters() {
     int max_monsters = 12 + game.population;
     if (game.monster_count >= max_monsters) return;
@@ -235,7 +319,7 @@ Monster* GetHoveredMonster(float click_world_x, float click_world_y, float radiu
 
 // ---------- 3. 全局生存参数初始化 ----------
 void InitGame() {
-    game.current_state = STATE_CITY; // === 核心修改：开局直接进入 STATE_CITY（经营状态） ===
+    game.current_state = STATE_CITY;
     game.wood = 200;
     game.coal = 50;
     game.meat = 50;
@@ -288,10 +372,8 @@ int main() {
 
         switch (game.current_state) {
 
-            // === 已安全移除：STATE_MENU 分支以及 DrawMainMenuLocal 相关代码 ===
-
         case STATE_CITY: {
-            UpdateHumanPositions();
+            UpdateHumanPositions();  // 人类平滑游走、且靠近黄色小鹿时会自动狂奔追击狩猎！
             UpdateMonsters();
             CheckAndRemoveDeadMonster();
 
