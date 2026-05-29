@@ -8,19 +8,21 @@
 #include <atlconv.h> 
 #include <windows.h>
 
-// === 核心技术点：引入 Windows 原生多媒体混合库，用于完美渲染透明 PNG ===
 #pragma comment(lib, "msimg32.lib")
 
+// 所有贴图句柄
 static IMAGE img_human_normal, img_human_super;
 static IMAGE img_mine, img_woodcamp, img_furnace;
 
-// === 核心新增：完美支持透明通道的 PNG 绘制函数 (彻底消除黑边与黑块) ===
+// === 新增：加载 3 张全新图片句柄 ===
+static IMAGE img_map;         // 地图背景
+static IMAGE img_wood_icon;   // 木头图标
+static IMAGE img_coal_icon;   // 煤炭图标
+
+// 完美支持透明通道的 PNG 绘制函数 (彻底消除黑边与黑块)
 void drawPNG(int x, int y, int w, int h, IMAGE* pSrcImg) {
-    // 获取绘图窗口的设备上下文
     HDC dstDC = GetImageHDC(NULL);
     HDC srcDC = GetImageHDC(pSrcImg);
-
-    // 使用高阶 AlphaBlend 混合算法，将不规则边缘与草地完美融为一体
     BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
     AlphaBlend(dstDC, x, y, w, h, srcDC, 0, 0, pSrcImg->getwidth(), pSrcImg->getheight(), bf);
 }
@@ -31,21 +33,26 @@ void InitRender() {
     loadimage(&img_mine, _T("res/mine.png"));
     loadimage(&img_woodcamp, _T("res/famu.png"));
     loadimage(&img_furnace, _T("res/furnace.png"));
+
+    // === 新增：在初始化时，成功把这 3 张图片加载到内存中 ===
+    loadimage(&img_map, _T("res/map.png"));
+    loadimage(&img_wood_icon, _T("res/wood.png"));
+    loadimage(&img_coal_icon, _T("res/coal.png"));
 }
 
 void DrawWorldLayer() {
     Camera cam = game.camera;
 
-    // --- 1. 绘制 3000x3000px 大地图底色 ---
+    // 获取大地图四个顶点的屏幕投影坐标
     int world_left, world_top, world_right, world_bottom;
     WorldToScreen(0, 0, &world_left, &world_top);
     WorldToScreen(3000.0f, 3000.0f, &world_right, &world_bottom);
 
-    setfillcolor(RGB(34, 115, 34)); // 深森林绿
-    solidrectangle(world_left, world_top, world_right, world_bottom);
+    // === 优化：使用真实的 map.png 贴图完美铺满 3000x3000px 大世界 (取代先前的绿色底色) ===
+    drawPNG(world_left, world_top, world_right - world_left, world_bottom - world_top, &img_map);
 
-    // 绘制微弱的网格参考线（降低对比度，RGB(40, 125, 40)，防止高频刷新闪烁）
-    setlinecolor(RGB(40, 125, 40));
+    // 绘制微弱的网格参考线
+    setlinecolor(RGB(180, 180, 180));
     for (int i = 500; i < 3000; i += 500) {
         int lx1, ly1, lx2, ly2;
         WorldToScreen((float)i, 0, &lx1, &ly1);
@@ -57,7 +64,7 @@ void DrawWorldLayer() {
         line(lx1, ly1, lx2, ly2);
     }
 
-    // --- 2. 遍历绘制所有人类 (限制物理世界大小为 50x50，防止巨图爆屏) ---
+    // --- 2. 遍历绘制所有人类 ---
     const int HUMAN_BASE_SIZE = 50;
     Human* cur = game.head;
     while (cur != NULL) {
@@ -68,7 +75,6 @@ void DrawWorldLayer() {
         int draw_w = (int)(HUMAN_BASE_SIZE * cam.zoom);
         int draw_h = (int)(HUMAN_BASE_SIZE * cam.zoom);
 
-        // === 修复点：改用自适应透明通道的 drawPNG 替换 putimage ===
         drawPNG(screen_x - draw_w / 2, screen_y - draw_h / 2, draw_w, draw_h, img);
 
         // 名字
@@ -128,17 +134,18 @@ void DrawUI() {
     settextcolor(WHITE);
     settextstyle(16, 0, _T("宋体"));
 
-    // === 修复点 1：必须声明自适应宽字符数组 TCHAR，不能写成 char ===
     TCHAR buf[100];
 
-    // === 修复点 2：改用 _stprintf_s，且字符串文字必须用 _T() 包裹 ===
+    // === 优化：在绘制“木头”和“煤炭”文本的前面，绘制新引入的小贴图图标 (22x22像素) ===
+    drawPNG(20, 18, 22, 22, &img_wood_icon);
     _stprintf_s(buf, _T("木头: %d"), game.wood);
-    outtextxy(20, 20, buf);
+    outtextxy(50, 20, buf); // 文字往后移动，给小图标腾出空间
 
+    drawPNG(20, 43, 22, 22, &img_coal_icon);
     _stprintf_s(buf, _T("煤炭: %d"), game.coal);
-    outtextxy(20, 45, buf);
+    outtextxy(50, 45, buf); // 文字往后移动，给小图标腾出空间
 
-    _stprintf_s(buf, _T("肉食: %d"), game.meat); // 改为肉食
+    _stprintf_s(buf, _T("食物: %d"), game.meat);
     outtextxy(20, 70, buf);
 
     _stprintf_s(buf, _T("人口: %d"), game.population);
@@ -168,6 +175,7 @@ void DrawUI() {
         DrawHoverTooltip(game.hovered_target, pt.x, pt.y);
     }
 }
+
 void RenderFrame() {
     cleardevice();
     DrawWorldLayer();
