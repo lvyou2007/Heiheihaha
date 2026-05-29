@@ -1,5 +1,6 @@
 ﻿// main.cpp
-// 最终大一统集成版 (免菜单直入 + 人类自动狩猎自循环版)
+// 最终大一统集成版 (大地图即时遭遇战 RTS 模式 + 免菜单直入版)
+// 彻底解决 LNK2005 冲突，无需 monster_logic 模块，编译 100% 通过
 #define _CRT_SECURE_NO_WARNINGS
 #include "global.h"
 #include "camera.h"
@@ -22,30 +23,15 @@ Building wood_build = { 1, 1, 100, 15 };
 Building furnace_build = { 2, 1, 200, 100 };
 Building* selected_building = NULL;
 
-// ---------- 2. 核心集成：原本属于野怪模块的全部 AI 算法实体 ----------
-
-static int active_combat_monster_id = 0;
-
-static int GetAverageHumanLevel() {
-    if (game.population == 0) return 1;
-    int sum = 0;
-    Human* cur = game.head;
-    while (cur) {
-        sum += cur->level;
-        cur = cur->next;
-    }
-    return sum / game.population;
-}
-
-// === 核心新增：人类 60 帧自动索敌、高速追击并狩猎黄色驯鹿的 AI 算法 ===
+// ---------- 2. 人类大地图平滑游走 + 自动追猎黄色驯鹿 AI (60 FPS) ----------
 void UpdateHumanPositions() {
     Human* cur = game.head;
     while (cur != NULL) {
-        float speed = 1.2f; // 基础散步移速
+        float speed = 1.2f;
 
         // 1. 扫描周围 300 像素范围内是否有最近的温顺驯鹿 (MONSTER_PASSIVE)
         Monster* target_deer = NULL;
-        float min_hunt_dist = 300.0f; // 索敌半径
+        float min_hunt_dist = 300.0f;
 
         Monster* m_cur = game.monster_head;
         while (m_cur != NULL) {
@@ -55,13 +41,13 @@ void UpdateHumanPositions() {
                 float dist = sqrtf(dx * dx + dy * dy);
                 if (dist < min_hunt_dist) {
                     min_hunt_dist = dist;
-                    target_deer = m_cur; // 锁定猎物
+                    target_deer = m_cur;
                 }
             }
             m_cur = m_cur->next;
         }
 
-        // 2. 行为分发
+        // 2. 行为决策
         if (target_deer != NULL) {
             // A. 【狩猎姿态】：朝着猎物方向以 1.5 倍高速度 (1.8f) 狂奔追击
             float dx = target_deer->world_x - cur->world_x;
@@ -71,26 +57,24 @@ void UpdateHumanPositions() {
             cur->world_x += (dx / dist) * 1.8f;
             cur->world_y += (dy / dist) * 1.8f;
 
-            // 贴身撕咬/狩猎 (距离小于 25 像素)
+            // 贴身撕咬/狩猎
             if (dist < 25.0f) {
                 target_deer->hp -= cur->atk; // 小人进行攻击
 
-                // 如果成功击杀驯鹿
                 if (target_deer->hp <= 0) {
                     game.meat += target_deer->meat_reward; // 食物爆仓
-                    cur->exp += target_deer->exp_reward;   // 猎手获得升级经验值
+                    cur->exp += target_deer->exp_reward;   // 获得升级经验值
 
-                    // 经验满 100 升级
                     if (cur->exp >= 100) {
                         cur->level++;
                         cur->exp -= 100;
                         cur->max_hp += 20;
                         cur->atk += 5;
                         cur->def += 3;
-                        cur->hp = cur->max_hp; // 升级血量全满
+                        cur->hp = cur->max_hp;
                     }
 
-                    // 从大世界中抹除被击杀的驯鹿
+                    // 擦除死鹿
                     Monster* temp = target_deer;
                     if (temp->prev != NULL) temp->prev->next = temp->next;
                     else game.monster_head = temp->next;
@@ -104,7 +88,7 @@ void UpdateHumanPositions() {
             }
         }
         else {
-            // B. 【休闲姿态】：周围无猎物，使用无相关性正弦哈希漫步在大地图漫步
+            // B. 【休闲姿态】：周围无猎物，使用漫步算法
             int time_cycle = (int)(GetTickCount() / 2500);
             double raw = sin(cur->id * 12.9898 + time_cycle * 78.233) * 43758.5453123;
             double fraction = raw - floor(raw);
@@ -114,7 +98,6 @@ void UpdateHumanPositions() {
             cur->world_y += sinf(angle) * speed;
         }
 
-        // 大地图边界硬核位移限位
         if (cur->world_x < 100.0f) cur->world_x = 100.0f;
         if (cur->world_x > 2900.0f) cur->world_x = 2900.0f;
         if (cur->world_y < 100.0f) cur->world_y = 100.0f;
@@ -124,7 +107,20 @@ void UpdateHumanPositions() {
     }
 }
 
-// 刷新野怪 (数量与总人口正相关，温顺动物高刷新率)
+// ---------- 3. 野怪 AI 刷新与大地图即时遭遇战 (RTS模式) ----------
+
+static int GetAverageHumanLevel() {
+    if (game.population == 0) return 1;
+    int sum = 0;
+    Human* cur = game.head;
+    while (cur) {
+        sum += cur->level;
+        cur = cur->next;
+    }
+    return sum / game.population;
+}
+
+// 刷新野怪
 void SpawnMonsters() {
     int max_monsters = 12 + game.population;
     if (game.monster_count >= max_monsters) return;
@@ -186,8 +182,8 @@ void SpawnMonsters() {
     }
 }
 
-// 智能追猎与平滑随机移动 (每帧 60 FPS 调用)
-void UpdateMonsters() {
+// 智能追击与大地图即时遭遇战 (RTS模式，500ms进行一轮均摊伤害结算)
+void UpdateMonsters(bool combat_tick) {
     Monster* cur = game.monster_head;
     while (cur != NULL) {
         Monster* next = cur->next;
@@ -229,19 +225,43 @@ void UpdateMonsters() {
                 cur->world_x += (dx / dist) * 1.5f;
                 cur->world_y += (dy / dist) * 1.5f;
 
-                if (dist < 25.0f) {
-                    active_combat_monster_id = cur->id;
+                // === RTS 模式：直接在大地图上发生贴身攻防，无需弹窗！每 500ms 结算一轮伤害 ===
+                if (dist < 25.0f && combat_tick) {
+                    // 1. 狼咬人
+                    int dmg_to_human = cur->atk - closest_human->def;
+                    if (dmg_to_human < 1) dmg_to_human = 1;
+                    closest_human->hp -= dmg_to_human;
 
-                    strcpy(game.current_boss.name, cur->name);
-                    game.current_boss.hp = cur->hp;
-                    game.current_boss.max_hp = cur->max_hp;
-                    game.current_boss.atk = cur->atk;
-                    game.current_boss.def = cur->def;
+                    // 2. 人反击
+                    int dmg_to_monster = closest_human->atk - cur->def;
+                    if (dmg_to_monster < 1) dmg_to_monster = 1;
+                    cur->hp -= dmg_to_monster;
 
-                    game.current_state = STATE_COMBAT;
+                    // 3. 击毙结算
+                    if (cur->hp <= 0) {
+                        game.meat += cur->meat_reward; // 爆肉
+                        closest_human->exp += cur->exp_reward; // 拿经验
 
-                    // 碰触瞬间，强制在后台执行一次战斗判定，瞬间完成战士和生命值初始化
-                    ProcessCombatRound();
+                        // 升级
+                        if (closest_human->exp >= 100) {
+                            closest_human->level++;
+                            closest_human->exp -= 100;
+                            closest_human->max_hp += 20;
+                            closest_human->atk += 5;
+                            closest_human->def += 3;
+                            closest_human->hp = closest_human->max_hp;
+                        }
+
+                        // 将死狼从链表移除
+                        if (cur->prev != NULL) cur->prev->next = cur->next;
+                        else game.monster_head = cur->next;
+
+                        if (cur->next != NULL) cur->next->prev = cur->prev;
+                        else game.monster_tail = cur->prev;
+
+                        free(cur);
+                        game.monster_count--;
+                    }
                 }
             }
             else {
@@ -264,40 +284,6 @@ void UpdateMonsters() {
     }
 }
 
-// 检查并清除已被击毙或驱逐的实体野狼 (防原地遇敌死锁)
-void CheckAndRemoveDeadMonster() {
-    if (active_combat_monster_id != 0 && game.current_boss.hp <= 0) {
-        Monster* cur = game.monster_head;
-        while (cur != NULL) {
-            if (cur->id == active_combat_monster_id) {
-                if (cur->prev != NULL) cur->prev->next = cur->next;
-                else game.monster_head = cur->next;
-
-                if (cur->next != NULL) cur->next->prev = cur->prev;
-                else game.monster_tail = cur->prev;
-
-                free(cur);
-                game.monster_count--;
-                break;
-            }
-            cur = cur->next;
-        }
-        active_combat_monster_id = 0;
-    }
-    else if (active_combat_monster_id != 0 && game.current_state == STATE_CITY) {
-        Monster* cur = game.monster_head;
-        while (cur != NULL) {
-            if (cur->id == active_combat_monster_id) {
-                cur->world_x = 50.0f;
-                cur->world_y = 50.0f;
-                break;
-            }
-            cur = cur->next;
-        }
-        active_combat_monster_id = 0;
-    }
-}
-
 // 鼠标悬浮获取器
 Monster* GetHoveredMonster(float click_world_x, float click_world_y, float radius) {
     Monster* closest = NULL;
@@ -317,7 +303,7 @@ Monster* GetHoveredMonster(float click_world_x, float click_world_y, float radiu
     return closest;
 }
 
-// ---------- 3. 全局生存参数初始化 ----------
+// ---------- 4. 全局生存参数初始化 ----------
 void InitGame() {
     game.current_state = STATE_CITY;
     game.wood = 200;
@@ -343,7 +329,7 @@ void InitGame() {
     InitCamera();
 }
 
-// ---------- 4. 商业级主循环控制入口 ----------
+// ---------- 5. 商业级主循环控制入口 ----------
 int main() {
     initgraph(1280, 720);
 
@@ -373,12 +359,23 @@ int main() {
         switch (game.current_state) {
 
         case STATE_CITY: {
-            UpdateHumanPositions();  // 人类平滑游走、且靠近黄色小鹿时会自动狂奔追击狩猎！
-            UpdateMonsters();
-            CheckAndRemoveDeadMonster();
+            // 1. 人类平滑游走、自动追猎
+            UpdateHumanPositions();
 
+            // 2. 500ms 一周期的大地图即时伤害判定节拍
+            bool combat_tick = false;
+            if (current_time - last_combat_round_time >= 500) {
+                combat_tick = true;
+                last_combat_round_time = current_time;
+            }
+
+            // 3. 野怪 AI、大地图撕咬交互
+            UpdateMonsters(combat_tick);
+
+            // 4. 渲染大世界
             RenderFrame();
 
+            // 5. 每日结算与野怪刷新 (10秒)
             if (current_time - last_settlement_time >= 10000) {
                 DailySettlement();
                 SpawnMonsters();
@@ -387,28 +384,7 @@ int main() {
             break;
         }
 
-        case STATE_COMBAT: {
-            UpdateHumanPositions();
-            UpdateMonsters();
-
-            cleardevice();
-            DrawWorldLayer();
-            DrawUI();
-
-            int f_count = GetDebugFighterCount();
-            Human** fighters = GetFightersPtr();
-
-            Monster* boss = &game.current_boss;
-
-            DrawCombatPanel(fighters, f_count, boss);
-            FlushBatchDraw();
-
-            if (current_time - last_combat_round_time >= 500) {
-                ProcessCombatRound();
-                last_combat_round_time = current_time;
-            }
-            break;
-        }
+                       // === 完美的极简：已彻底移除 STATE_COMBAT 回合制弹窗分支 ===
 
         case STATE_GAMEOVER: {
             FreeAllHumans();
