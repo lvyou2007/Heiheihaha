@@ -1,9 +1,10 @@
 ﻿// ui_panel.cpp
+// 已适配 Unicode 字符集，修复 LNK/E0304/C2665 报错
 #define _CRT_SECURE_NO_WARNINGS
 #include "ui_panel.h"
 #include <easyx.h>
 #include <stdio.h>
-
+#include <tchar.h>
 
 void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
     if (target == NULL) return;
@@ -21,17 +22,19 @@ void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
     fillroundrect(left, top, left + tip_w, top + tip_h, 10, 10);
     settextstyle(14, 0, _T("宋体"));
 
-    // 名字（超凡者金色）
+    // 名字（自适应 %S 格式化窄字符 target->name 并在超凡者时显示金色）
+    TCHAR name_buf[64];
+    _stprintf_s(name_buf, _T("%S"), target->name);
     if (target->is_superman) settextcolor(RGB(255, 215, 0));
     else settextcolor(WHITE);
-    outtextxy(left + 10, top + 10, target->name);
+    outtextxy(left + 10, top + 10, name_buf);
 
-    // 属性
+    // 属性 (采用 TCHAR 数组)
     settextcolor(WHITE);
-    char buf[64];
-    sprintf(buf, "等级: %d", target->level);
+    TCHAR buf[64];
+    _stprintf_s(buf, _T("等级: %d"), target->level);
     outtextxy(left + 10, top + 35, buf);
-    sprintf(buf, "攻击: %d  防御: %d", target->atk, target->def);
+    _stprintf_s(buf, _T("攻击: %d  防御: %d"), target->atk, target->def);
     outtextxy(left + 10, top + 60, buf);
 
     // 血条
@@ -40,17 +43,16 @@ void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
     setfillcolor(RGB(60, 60, 60));
     fillrectangle(left + 10, top + 85, left + 10 + bar_w, top + 85 + bar_h);
     setfillcolor(RGB(0, 200, 0));
-    fillrectangle(left + 10, top + 85, left + 10 + bar_w * ratio, top + 85 + bar_h);
-    sprintf(buf, "HP: %d/%d", target->hp, target->max_hp);
+    fillrectangle(left + 10, top + 85, left + 10 + (int)(bar_w * ratio), top + 85 + bar_h);
+
+    _stprintf_s(buf, _T("HP: %d/%d"), target->hp, target->max_hp);
     outtextxy(left + 10, top + 100, buf);
 
     // 饱食度
-    sprintf(buf, "饱食度: %d", target->hunger);
+    _stprintf_s(buf, _T("饱食度: %d"), target->hunger);
     outtextxy(left + 10, top + 130, buf);
 }
 
-// 战斗面板（需要 global.h 中定义了 Monster 结构体，或者由组员D提供定义）
-// 如果 Monster 未定义，请暂时注释掉此函数，或添加临时定义。
 void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
     if (enemy == NULL) return;
 
@@ -67,11 +69,15 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
     // 标题
     settextstyle(20, 0, _T("黑体"));
     settextcolor(RGB(100, 200, 100));
-    char title[64];
-    sprintf(title, "人类战队 (出战: %d)", fighter_count);
+    TCHAR title[64];
+    _stprintf_s(title, _T("人类战队 (出战: %d)"), fighter_count);
     outtextxy(left + 50, top + 15, title);
+
+    // Boss 名字格式化自适应 %S
+    TCHAR enemy_name[64];
+    _stprintf_s(enemy_name, _T("%S"), enemy->name);
     settextcolor(RGB(200, 100, 100));
-    outtextxy(left + panel_w / 2 + 50, top + 15, enemy->name);
+    outtextxy(left + panel_w / 2 + 50, top + 15, enemy_name);
 
     // 左侧人类列表
     int start_y = top + 60;
@@ -84,16 +90,21 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
 
         settextstyle(12, 0, _T("宋体"));
         settextcolor(WHITE);
-        outtextxy(left + 20, y, h->name);
+
+        // 格式化战士人名
+        TCHAR h_name[64];
+        _stprintf_s(h_name, _T("%S"), h->name);
+        outtextxy(left + 20, y, h_name);
 
         float r = (float)h->hp / h->max_hp;
         int bar_w = 150;
         setfillcolor(RGB(80, 80, 80));
         fillrectangle(left + 120, y - 8, left + 120 + bar_w, y + 8);
         setfillcolor(RGB(0, 200, 0));
-        fillrectangle(left + 120, y - 8, left + 120 + bar_w * r, y + 8);
-        char hp_txt[32];
-        sprintf(hp_txt, "%d/%d", h->hp, h->max_hp);
+        fillrectangle(left + 120, y - 8, left + 120 + (int)(bar_w * r), y + 8);
+
+        TCHAR hp_txt[32];
+        _stprintf_s(hp_txt, _T("%d/%d"), h->hp, h->max_hp);
         outtextxy(left + 280, y - 5, hp_txt);
     }
     if (fighter_count > max_display) {
@@ -108,15 +119,16 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
     setfillcolor(RGB(80, 30, 30));
     fillrectangle(boss_bar_x, boss_bar_y, boss_bar_x + boss_bar_w, boss_bar_y + boss_bar_h);
     setfillcolor(RGB(200, 0, 0));
-    fillrectangle(boss_bar_x, boss_bar_y, boss_bar_x + boss_bar_w * br, boss_bar_y + boss_bar_h);
+    fillrectangle(boss_bar_x, boss_bar_y, boss_bar_x + (int)(boss_bar_w * br), boss_bar_y + boss_bar_h);
     settextstyle(16, 0, _T("黑体"));
-    char boss_info[64];
-    sprintf(boss_info, "血量: %d/%d", enemy->hp, enemy->max_hp);
+
+    TCHAR boss_info[64];
+    _stprintf_s(boss_info, _T("血量: %d/%d"), enemy->hp, enemy->max_hp);
     outtextxy(boss_bar_x + 20, boss_bar_y - 25, boss_info);
-    sprintf(boss_info, "攻击: %d  防御: %d", enemy->atk, enemy->def);
+    _stprintf_s(boss_info, _T("攻击: %d  防御: %d"), enemy->atk, enemy->def);
     outtextxy(boss_bar_x + 20, boss_bar_y + 40, boss_info);
 
-    // 关闭按钮（仅示意）
+    // 关闭按钮
     setfillcolor(RGB(150, 50, 50));
     fillcircle(left + panel_w - 20, top + 20, 12);
     settextcolor(WHITE);

@@ -62,7 +62,10 @@ void DrawWorldLayer() {
         settextstyle(12, 0, _T("宋体"));
         setbkmode(TRANSPARENT);
         settextcolor(WHITE);
-        outtextxy(screen_x - 20, screen_y - draw_h / 2 - 15, cur->name);
+        // === 修复第 65 行：将窄字符人名转为 TCHAR 宽字符后再绘制 ===
+        TCHAR name_buf[64];
+        _stprintf_s(name_buf, _T("%S"), cur->name); // 大写 S 专门用于将窄字符格式化为宽字符
+        outtextxy(screen_x - 20, screen_y - draw_h / 2 - 15, name_buf);
 
         float ratio = (float)cur->hp / cur->max_hp;
         int bar_width = (int)(50 * cam.zoom);
