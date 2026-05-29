@@ -155,6 +155,26 @@ void DailySettlement() {
         cur = next;
     }
 
+    // === 核心新增1：每日结算中，每个存活人口每日自动采集 3 个食物，维持温饱线 ===
+    game.meat += game.population * 3;
+
+    // === 核心新增2：大熔炉燃料消耗机制。煤炭耗尽则熔炉熄火 ===
+    int coal_needed = furnace_build.level * 4; // 每日煤炭消耗量
+    if (game.coal >= coal_needed) {
+        game.coal -= coal_needed;
+        game.furnace_temp = furnace_build.produce_rate; // 充足，维持加热
+    }
+    else {
+        game.coal = 0;
+        game.furnace_temp = 0; // 煤炭枯竭，熔炉瞬间熄火，外界体感暴跌！
+    }
+
+    // === 核心新增3：游戏结束状态判定。人口降为 0 时触发 GameOver 状态 ===
+    if (game.population <= 0) {
+        game.current_state = STATE_GAMEOVER;
+    }
+
+
     // 5. 人口自然繁衍（每天增加当前人口的5%）
     if (game.population > 0) {
         int new_count = (int)(game.population * 0.05);
