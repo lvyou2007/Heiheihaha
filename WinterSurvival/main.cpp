@@ -31,7 +31,7 @@ void InitGameData() {
     game.wood = 100;
     game.coal = 50;
     game.meat = 50;
-    game.current_temp = 20;
+    game.env_temp = 20;
 
     // 3. 调用组员 C 的真实逻辑：初始化空链表 (这步替代了旧的 human_list = NULL)
     InitHumanList();

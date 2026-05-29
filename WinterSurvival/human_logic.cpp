@@ -126,7 +126,7 @@ void DailySettlement() {
         }
 
         // 2. 温度影响（如果熔炉等级低，温度 < 10 就扣血）
-        if (game.current_temp < 10) {
+        if (game.env_temp < 10) {
             cur->hp -= 3;
         }
 
