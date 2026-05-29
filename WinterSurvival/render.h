@@ -1,9 +1,15 @@
-﻿#pragma once
+﻿// render.h
+#pragma once
 #include "global.h"
 
-// 组员B 的接口声明，供 main.cpp 调用
-void DrawMainMenu();
-void DrawWorld();
-void DrawCityUI();
-void DrawHoverTooltip();
-void DrawCombatPanel();
+// 初始化渲染资源（加载贴图等）
+void InitRender();
+
+// 主渲染入口（每帧调用）
+void RenderFrame();
+
+// 世界层绘制（人物、建筑）
+void DrawWorldLayer();
+
+// UI层绘制（资源条、按钮、悬浮面板、战斗面板）
+void DrawUI();
