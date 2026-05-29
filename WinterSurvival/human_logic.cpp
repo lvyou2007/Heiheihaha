@@ -263,30 +263,30 @@ Human* GetHoveredHuman(float click_world_x, float click_world_y, float radius) {
 #include <math.h>
 
 // === 升级：全图无漂移、无碰撞干涉的完全随机漫步算法 (60 FPS) ===
-void UpdateHumanPositions() {
-    Human* cur = game.head;
-    while (cur != NULL) {
-        float speed = 1.5f; // 散步速度（适中）
+//void UpdateHumanPositions() {
+    //Human* cur = game.head;
+   // while (cur != NULL) {
+    //    float speed = 1.5f; // 散步速度（适中）
 
         // 1. 每 2.5 秒 (2500毫秒) 换一次散步方向
-        int time_cycle = (int)(GetTickCount() / 2500);
+    //    int time_cycle = (int)(GetTickCount() / 2500);
 
         // 2. 使用高度离散的数学哈希噪点公式 (Shader 经典算法)
         // 彻底绕过 MSVC 编译器的 srand 线性相关性 Bug，为每个 ID 产生绝对独立的随机方向
-        double raw = sin(cur->id * 12.9898 + time_cycle * 78.233) * 43758.5453123;
-        double fraction = raw - floor(raw); // 取小数部分 [0.0, 1.0)
-        float angle = (float)(fraction * 2.0 * 3.1415926535); // 转换为 [0, 2*PI] 弧度
+    //    double raw = sin(cur->id * 12.9898 + time_cycle * 78.233) * 43758.5453123;
+    //    double fraction = raw - floor(raw); // 取小数部分 [0.0, 1.0)
+    //    float angle = (float)(fraction * 2.0 * 3.1415926535); // 转换为 [0, 2*PI] 弧度
 
         // 3. 平滑应用位移
-        cur->world_x += cosf(angle) * speed;
-        cur->world_y += sinf(angle) * speed;
+   //     cur->world_x += cosf(angle) * speed;
+    //    cur->world_y += sinf(angle) * speed;
 
         // 4. 全图 $3000 \times 3000$ 边界硬约束，防止小人走出世界
-        if (cur->world_x < 100.0f) cur->world_x = 100.0f;
-        if (cur->world_x > 2900.0f) cur->world_x = 2900.0f;
-        if (cur->world_y < 100.0f) cur->world_y = 100.0f;
-        if (cur->world_y > 2900.0f) cur->world_y = 2900.0f;
+    //    if (cur->world_x < 100.0f) cur->world_x = 100.0f;
+    //    if (cur->world_x > 2900.0f) cur->world_x = 2900.0f;
+    //    if (cur->world_y < 100.0f) cur->world_y = 100.0f;
+     //   if (cur->world_y > 2900.0f) cur->world_y = 2900.0f;
 
-        cur = cur->next;
-    }
-}
+    //    cur = cur->next;
+  //  }
+//}

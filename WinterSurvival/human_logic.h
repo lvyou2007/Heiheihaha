@@ -13,4 +13,4 @@ void DailySettlement();
 Human** GetFighters(int* out_count);
 void GetAverageAttributes(int* avg_atk, int* avg_def, int* avg_hp);
 Human* GetHoveredHuman(float click_world_x, float click_world_y, float radius);
-void UpdateHumanPositions();//人物移动函数
+//void UpdateHumanPositions();//人物移动函数
