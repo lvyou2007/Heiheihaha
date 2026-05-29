@@ -112,6 +112,16 @@ void DailySettlement() {
 
         // 1. 饱食度下降（每天-10）
         cur->hunger -= 10;
+
+        // === 核心新增：自动吃肉自循环。当小人饥饿度低于 80 且仓库有食物（meat）时，自动消耗 1 个食物，回 10 饱食度 ===
+        if (cur->hunger < 80 && game.meat > 0) {
+            game.meat--;            // 基地肉食储备 -1
+            cur->hunger +=10;      // 饱食度回复 10 点
+            if (cur->hunger > 100) {
+                cur->hunger = 100;  // 饱食度上限
+            }
+        }
+
         if (cur->hunger < 0) cur->hunger = 0;
         if (cur->hunger == 0) {
             cur->hp -= 5;   // 饥饿扣血
