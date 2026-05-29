@@ -1,6 +1,7 @@
 ﻿#include "camera.h"
 extern Human* GetHoveredHuman(float click_world_x, float click_world_y, float radius);
-
+// === 修复：在 camera.cpp 头部补充野怪检测器的外部声明 ===
+extern Monster* GetHoveredMonster(float click_world_x, float click_world_y, float radius);
 
 // 坐标转换：将世界坐标转换为屏幕像素坐标
 void WorldToScreen(float world_x, float world_y, int* screen_x, int* screen_y) {
@@ -220,6 +221,7 @@ void ProcessInput() {
             float world_mouse_x, world_mouse_y;
             ScreenToWorld(msg.x, msg.y, &world_mouse_x, &world_mouse_y);
             game.hovered_target = GetHoveredHuman(world_mouse_x, world_mouse_y, 25.0f);
+            game.hovered_monster = GetHoveredMonster(world_mouse_x, world_mouse_y, 35.0f);
         }
 
         // --- 3. 处理滚轮缩放 (保持原样) ---
