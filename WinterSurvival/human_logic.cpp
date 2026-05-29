@@ -142,6 +142,12 @@ void DailySettlement() {
             // 注意：cur 已经被 free，不能再访问，但 next 已经保存好了
         }
 
+        // === 核心新增：环境温度每日逐渐降低 3 度，直到达到极限寒冬 -45 度 ===
+        if (game.env_temp > -45) {
+            game.env_temp -= 3;
+            if (game.env_temp < -45) game.env_temp = -45;
+        }
+
         //每日根据升级后的建筑指标，自动获得生存资源 ===
         game.wood += wood_build.produce_rate;  // 根据伐木场等级自动加木材
         game.coal += mine_build.produce_rate;  // 根据矿场等级自动加煤炭

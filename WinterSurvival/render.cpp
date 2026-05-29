@@ -151,11 +151,29 @@ void DrawUI() {
     _stprintf_s(buf, _T("人口: %d"), game.population);
     outtextxy(150, 20, buf);
 
-    // 体感温度自适应计算
-    int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2);
-    _stprintf_s(buf, _T("环境温度: %d C  |  熔炉: %d C  |  体感: %d C"), game.env_temp, game.furnace_temp, effective_temp);
-    outtextxy(10, 680, buf);
+    // === 绘制左下半透明磨砂温度面板 ===
+    int temp_left = 15;
+    int temp_top = 665;
+    int temp_w = 440;
+    int temp_h = 45;
 
+    // 绘制半透明深灰色底框
+    setfillcolor(RGB(20, 24, 30));
+    fillroundrect(temp_left, temp_top, temp_left + temp_w, temp_top + temp_h, 8, 8);
+    // 绘制青蓝色描边
+    setlinecolor(RGB(0, 150, 255));
+    roundrect(temp_left, temp_top, temp_left + temp_w, temp_top + temp_h, 8, 8);
+
+    // 计算当前的实际体感温度
+    int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2);
+
+    // 使用 Windows 标准宽字符编码 \u00B0 完美渲染 "°C" 符号，彻底解决乱码
+    _stprintf_s(buf, _T("环境温度: %d \u00B0C  |  熔炉: %d \u00B0C  |  体感: %d \u00B0C"),
+        game.env_temp, game.furnace_temp, effective_temp);
+
+    settextcolor(effective_temp < 10 ? RGB(255, 100, 100) : RGB(100, 255, 100)); // 低于10度亮红警报
+    settextstyle(15, 0, _T("微软雅黑"));
+    outtextxy(temp_left + 15, temp_top + 13, buf);
 
     // 悬浮提示框
     if (game.hovered_target != NULL) {

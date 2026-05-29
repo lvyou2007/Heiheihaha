@@ -34,12 +34,17 @@ void InitGameData() {
     // 为了方便我们现在测试画面，直接跳过菜单，进入城市大地图
     game.current_state = STATE_CITY;
 
-    // 2. 初始化初始资源
-    game.wood = 100;
+    game.wood = 200;        // 初始木材，正好够伐木场升级
     game.coal = 50;
     game.meat = 50;
-    game.env_temp = -30;     // 极寒环境底噪温度为 -30 度
-    game.furnace_temp = 200;  // 熔炉初始燃烧温度为 200 度
+    game.env_temp = -15;    // 初始温度温和一些，给玩家发展期
+    game.furnace_temp = 100;// 一级熔炉
+
+    // 初始三个建筑指标
+    mine_build = { 0, 1, 150, 5 };       // 1级矿场，升级需150，日产5煤炭
+    wood_build = { 1, 1, 100, 15 };       // 1级伐木场，升级需100，日产15木头
+    furnace_build = { 2, 1, 200, 100 };   // 1级熔炉，升级需200，炉温100度
+
 
     // 3. 调用组员 C 的真实逻辑：初始化空链表 (这步替代了旧的 human_list = NULL)
     InitHumanList();
