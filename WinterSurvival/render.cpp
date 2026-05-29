@@ -5,7 +5,7 @@
 #include "camera.h"          // 组员A提供
 #include <easyx.h>
 #include <stdio.h>
-#include < atlconv.h >
+#include <atlconv.h >
 #include <windows.h>
 
 
@@ -97,6 +97,10 @@ void DrawUI() {
 
     // 温度
     sprintf(buf, "当前温度: %d", game.env_temp);
+    outtextxy(10, 680, buf);
+    // 修复：使用环境和熔炉自适应计算体感温度
+    int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2);
+    sprintf_s(buf, "环境温度: %d C  |  熔炉: %d C  |  体感: %d C", game.env_temp, game.furnace_temp, effective_temp);
     outtextxy(10, 680, buf);
 
     // 底部升级按钮（绝对坐标）

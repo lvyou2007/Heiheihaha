@@ -375,6 +375,22 @@ bool LoadGame(const char* filepath) {
     fclose(fp);
     return true;
 }
+// === 在 combat_sys.cpp 末尾，实现给外部调用的获取器接口 ===
+
+// 获取当前参战的人数统计
+int GetDebugFighterCount(void) {
+    return fighter_count;
+}
+
+// 获取指向前线参战人员数组的指针
+Human** GetFightersPtr(void) {
+    return fighters;
+}
+
+// 获取当前交战野怪的指针（提供给组员 B 的 DrawCombatPanel 绘制血条）
+Monster* GetCurrentBossPtr(void) {
+    return &current_boss;
+}
 // 追加到 combat_sys.cpp 尾部，用于测试模块读取状态
 //void DebugSpawnBoss(const char* name, int hp, int atk, int def, int meat, int exp) {
   //  strcpy(current_boss.name, name);

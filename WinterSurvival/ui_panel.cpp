@@ -1,8 +1,9 @@
 ﻿// ui_panel.cpp
+#define _CRT_SECURE_NO_WARNINGS
 #include "ui_panel.h"
 #include <easyx.h>
 #include <stdio.h>
-#define _CRT_SECURE_NO_WARNINGS
+
 
 void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
     if (target == NULL) return;
