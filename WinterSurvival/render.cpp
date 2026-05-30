@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <atlconv.h> 
 #include <windows.h>
+extern Building mine_build;
+extern Building wood_build;
+extern Building furnace_build;
 
 #pragma comment(lib, "msimg32.lib")
 
@@ -21,7 +24,8 @@ static IMAGE img_coal_icon;   // 煤炭图标
 static IMAGE img_monster;     // 仅供给饿狼使用
 static IMAGE img_meat_icon;    // 食物图标
 static IMAGE img_house;       //房屋
-static IMAGE img_smallmonster;
+static IMAGE img_smallmonster;//小怪
+static IMAGE img_level1, img_level2, img_level3;//建筑等级标识
 
 //房屋坐标
 static const float house_coords[][2] = {
@@ -57,6 +61,9 @@ void InitRender() {
     loadimage(&img_monster, _T("res/monster.png"));
     loadimage(&img_meat_icon, _T("res/meat.png"));
     loadimage(&img_smallmonster, _T("res/small monster.png"));
+    loadimage(&img_level1, _T("res/level 1.png"));
+    loadimage(&img_level2, _T("res/level 2.png"));
+    loadimage(&img_level3, _T("res/level 3.png"));
 }
 
 void DrawWorldLayer() {
@@ -131,13 +138,29 @@ void DrawWorldLayer() {
     int draw_w = (int)(FURNACE_SIZE * game.camera.zoom);
     int draw_h = (int)(FURNACE_SIZE * game.camera.zoom);
     drawPNG(fx - draw_w / 2, fy - draw_h / 2, draw_w, draw_h, &img_furnace);
+    int lv3= furnace_build.level;
+    const int ICON_SIZE = 40;  // 固定像素大小，不受缩放影响
+    int iconX = fx - ICON_SIZE / 2;
+    int iconY = fy - draw_h / 2 - ICON_SIZE - 1;  // 建筑顶部向上偏移5像素
+    if (lv3 == 1) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level1);
+    else if (lv3 == 2) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level2);
+    else if (lv3 == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
 
     // 矿场 (600, 800)
+    
     int mx, my;
     WorldToScreen(600.0f, 800.0f, &mx, &my);
     draw_w = (int)(MINE_SIZE * game.camera.zoom);
     draw_h = (int)(MINE_SIZE * game.camera.zoom);
     drawPNG(mx - draw_w / 2, my - draw_h / 2, draw_w, draw_h, &img_mine);
+
+    // ========== 矿场等级标识（正上方） ==========
+    int lv = mine_build.level;
+    iconX = mx - ICON_SIZE / 2;
+    iconY = my - draw_h / 2 - ICON_SIZE - 1;  // 建筑顶部向上偏移5像素
+    if (lv == 1) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level1);
+    else if (lv == 2) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level2);
+    else if (lv == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
 
     // 伐木场 (2000, 1800)
     int wx, wy;
@@ -145,6 +168,12 @@ void DrawWorldLayer() {
     draw_w = (int)(WOOD_SIZE * game.camera.zoom);
     draw_h = (int)(WOOD_SIZE * game.camera.zoom);
     drawPNG(wx - draw_w / 2, wy - draw_h / 2, draw_w, draw_h, &img_woodcamp);
+    int lv2 = wood_build.level;
+    iconX = wx - ICON_SIZE / 2;
+    iconY = wy - draw_h / 2 - ICON_SIZE - 1;  // 建筑顶部向上偏移5像素
+    if (lv2 == 1) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level1);
+    else if (lv2 == 2) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level2);
+    else if (lv2 == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
 
     //房屋
     // 装饰性房屋
