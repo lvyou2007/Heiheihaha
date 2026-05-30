@@ -60,7 +60,7 @@ void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
 
     // 饱食度
     _stprintf_s(buf, _T("饱食度: %d"), target->hunger);
-    outtextxy(left + 10, top + 130, buf);
+    outtextxy(left + 100, top + 137, buf);
 }
 
 // === 【核心新增整个函数】：野怪专属的半透明红色敌对悬浮面板 ===

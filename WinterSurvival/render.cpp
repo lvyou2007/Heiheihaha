@@ -20,6 +20,19 @@ static IMAGE img_wood_icon;   // 木头图标
 static IMAGE img_coal_icon;   // 煤炭图标
 static IMAGE img_monster;     // 仅供给饿狼使用
 static IMAGE img_meat_icon;    // 食物图标
+static IMAGE img_house;       //房屋
+static IMAGE img_smallmonster;
+
+//房屋坐标
+static const float house_coords[][2] = {
+    {600, 200},
+    {1200, 800},
+    {1800, 1400},
+    {2400, 500},
+    {900, 2500}
+};
+#define HOUSE_COUNT (sizeof(house_coords)/sizeof(house_coords[0]))
+
 
 // 完美支持透明通道的 PNG 绘制函数 (彻底消除黑边与黑块)
 void drawPNG(int x, int y, int w, int h, IMAGE* pSrcImg) {
@@ -35,6 +48,7 @@ void InitRender() {
     loadimage(&img_mine, _T("res/mine.png"));
     loadimage(&img_woodcamp, _T("res/famu.png"));
     loadimage(&img_furnace, _T("res/furnace.png"));
+    loadimage(&img_house, _T("res/house.png"));
 
     // === 新增：在初始化时，成功把这 3 张图片加载到内存中 ===
     loadimage(&img_map, _T("res/map.png"));
@@ -42,6 +56,7 @@ void InitRender() {
     loadimage(&img_coal_icon, _T("res/coal.png"));
     loadimage(&img_monster, _T("res/monster.png"));
     loadimage(&img_meat_icon, _T("res/meat.png"));
+    loadimage(&img_smallmonster, _T("res/small monster.png"));
 }
 
 void DrawWorldLayer() {
@@ -69,7 +84,7 @@ void DrawWorldLayer() {
     }
 
     // --- 2. 遍历绘制所有人类 ---
-    const int HUMAN_BASE_SIZE = 50;
+    const int HUMAN_BASE_SIZE = 100;
     Human* cur = game.head;
     while (cur != NULL) {
         int screen_x, screen_y;
@@ -105,9 +120,10 @@ void DrawWorldLayer() {
     }
 
     // --- 3. 限制建筑尺寸并使用透明混色绘制 ---
-    const int MINE_SIZE = 200;
-    const int WOOD_SIZE = 200;
+    const int MINE_SIZE = 450;
+    const int WOOD_SIZE = 450;
     const int FURNACE_SIZE = 450;
+    const int HOUSE_SIZE = 250;   // 房屋图片基础尺寸（可根据实际图片调整）
 
     // 大熔炉 (1500, 1500)
     int fx, fy;
@@ -123,12 +139,33 @@ void DrawWorldLayer() {
     draw_h = (int)(MINE_SIZE * game.camera.zoom);
     drawPNG(mx - draw_w / 2, my - draw_h / 2, draw_w, draw_h, &img_mine);
 
-    // 伐木场 (2200, 2100)
+    // 伐木场 (2000, 1800)
     int wx, wy;
     WorldToScreen(2200.0f, 2100.0f, &wx, &wy);
     draw_w = (int)(WOOD_SIZE * game.camera.zoom);
     draw_h = (int)(WOOD_SIZE * game.camera.zoom);
     drawPNG(wx - draw_w / 2, wy - draw_h / 2, draw_w, draw_h, &img_woodcamp);
+
+    //房屋
+    // 装饰性房屋
+
+    // 房屋的世界坐标（随意放几个点，避免和功能性建筑重叠）
+    static const float housePos[][2] = {
+        { 1100, 1300 },
+        { 1800, 1900 },
+        { 1100, 1650 },
+        { 1200, 1950 },
+        { 2000, 1500 }
+    };
+
+    for (int i = 0; i < 5; i++) {
+        int hx, hy;
+        WorldToScreen(housePos[i][0], housePos[i][1], &hx, &hy);
+        int draw_w = (int)(HOUSE_SIZE * game.camera.zoom);
+        int draw_h = (int)(HOUSE_SIZE * game.camera.zoom);
+        drawPNG(hx - draw_w / 2, hy - draw_h / 2, draw_w, draw_h, &img_house);
+    }
+
 
     // === 核心新增：绘制野怪。无攻击性的驯鹿画成黄色圆点，攻击性的饿狼画成 monster.png 贴图 ===
     Monster* m_cur = game.monster_head;
@@ -138,17 +175,17 @@ void DrawWorldLayer() {
 
         if (m_cur->type == MONSTER_AGGRESSIVE) {
             // A. 暴雪饿狼：使用精美的 PNG 贴图绘制
-            int m_base_size = 75;
+            int m_base_size = 130;
             int draw_w = (int)(m_base_size * cam.zoom);
             int draw_h = (int)(m_base_size * cam.zoom);
             drawPNG(screen_x - draw_w / 2, screen_y - draw_h / 2, draw_w, draw_h, &img_monster);
         }
         else {
             // B. 温顺驯鹿：画成精致的金黄色圆点，体现“可狩猎肉类”
-            int radius = (int)(10 * cam.zoom);
-            if (radius < 2) radius = 2;
-            setfillcolor(RGB(255, 215, 0)); // 金黄色
-            solidcircle(screen_x, screen_y, radius);
+            int m_base_size = 80;
+            int draw_w = (int)(m_base_size * cam.zoom);
+            int draw_h = (int)(m_base_size * cam.zoom);
+            drawPNG(screen_x - draw_w / 2, screen_y - draw_h / 2, draw_w, draw_h, &img_smallmonster);
         }
 
         // 绘制野怪名字 (饿狼红橙色，驯鹿黄色)
@@ -191,9 +228,6 @@ void DrawUI() {
     drawPNG(20, 43, 22, 22, &img_coal_icon);
     _stprintf_s(buf, _T("煤炭: %d"), game.coal);
     outtextxy(50, 45, buf); // 文字往后移动，给小图标腾出空间
-
-    _stprintf_s(buf, _T("食物: %d"), game.meat);
-    outtextxy(20, 70, buf);
 
     _stprintf_s(buf, _T("人口: %d"), game.population);
     outtextxy(150, 20, buf);
