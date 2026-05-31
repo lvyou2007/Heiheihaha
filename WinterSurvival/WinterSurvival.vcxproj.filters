@@ -33,6 +33,12 @@
     <ClInclude Include="ui_panel.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="monster_logic.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="audio.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -51,6 +57,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="ui_panel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="monster_logic.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="audio.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
