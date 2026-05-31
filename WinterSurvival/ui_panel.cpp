@@ -219,38 +219,41 @@ void DrawUpgradePanel(Building* b) {
     settextstyle(16, 0, _T("宋体"));
     settextcolor(WHITE);
     TCHAR lv_buf[32];
-    if (b->level >= 3) _stprintf_s(lv_buf, _T("当前等级: MAX"));
-    else _stprintf_s(lv_buf, _T("当前等级: %d 级"), b->level);
+    if (b->level >= MAX_BUILDING_LEVEL) _stprintf_s(lv_buf, _T("当前等级: MAX"));
+    else _stprintf_s(lv_buf, _T("当前等级: %d / %d 级"), b->level, MAX_BUILDING_LEVEL);
     outtextxy(left + 40, top + 75, lv_buf);
 
-    // 3. 绘制核心指标属性对比
+    // 3. 绘制核心指标属性对比（使用与升级一致的公式）
     TCHAR attr_buf1[128];
     TCHAR attr_buf2[128];
     settextcolor(RGB(200, 200, 200));
 
     if (b->type == 0) { // 矿场
         _stprintf_s(attr_buf1, _T("当前煤炭生产速率: %d / 每天"), b->produce_rate);
-        if (b->level < 3) {
-            int next_rate = (b->level == 1) ? 12 : 25;
-            _stprintf_s(attr_buf2, _T("升级后生产速率: %d / 每天 (+%d)"), next_rate, next_rate - b->produce_rate);
+        if (b->level < MAX_BUILDING_LEVEL) {
+            int next_rate = 5 + (b->level) * 5;          // 下一级等级 = b->level+1，公式 produce_rate = 5 + (level-1)*5，代入得 next_rate = 5 + b->level*5
+            int next_cost = 150 + (b->level + 1) * 50;   // 下一级消耗木材
+            _stprintf_s(attr_buf2, _T("升级后生产速率: %d / 每天 (+%d)  消耗木材: %d"), next_rate, next_rate - b->produce_rate, next_cost);
         }
     }
     else if (b->type == 1) { // 伐木场
         _stprintf_s(attr_buf1, _T("当前木材生产速率: %d / 每天"), b->produce_rate);
-        if (b->level < 3) {
-            int next_rate = (b->level == 1) ? 30 : 50;
-            _stprintf_s(attr_buf2, _T("升级后生产速率: %d / 每天 (+%d)"), next_rate, next_rate - b->produce_rate);
+        if (b->level < MAX_BUILDING_LEVEL) {
+            int next_rate = 15 + (b->level) * 10;        // 同理 produce_rate = 15 + (level-1)*10
+            int next_cost = 100 + (b->level + 1) * 40;
+            _stprintf_s(attr_buf2, _T("升级后生产速率: %d / 每天 (+%d)  消耗木材: %d"), next_rate, next_rate - b->produce_rate, next_cost);
         }
     }
     else if (b->type == 2) { // 熔炉
         _stprintf_s(attr_buf1, _T("当前核芯辐射温度: %d C (提供体感 +%d C)"), b->produce_rate, (int)(b->produce_rate * 0.2));
-        if (b->level < 3) {
-            int next_temp = (b->level == 1) ? 200 : 350;
-            _stprintf_s(attr_buf2, _T("升级后辐射温度: %d C (体感 +%d C)"), next_temp, (int)(next_temp * 0.2));
+        if (b->level < MAX_BUILDING_LEVEL) {
+            int next_temp = 100 + (b->level) * 80;       // produce_rate = 100 + (level-1)*80
+            int next_cost = 200 + (b->level + 1) * 60;
+            _stprintf_s(attr_buf2, _T("升级后辐射温度: %d C (体感 +%d C)  消耗木材: %d"), next_temp, (int)(next_temp * 0.2), next_cost);
         }
     }
     outtextxy(left + 40, top + 115, attr_buf1);
-    if (b->level < 3) {
+    if (b->level < MAX_BUILDING_LEVEL) {
         settextcolor(RGB(100, 255, 100)); // 升级提升属性显示为绿色
         outtextxy(left + 40, top + 145, attr_buf2);
     }
@@ -258,7 +261,7 @@ void DrawUpgradePanel(Building* b) {
     // 4. 绘制升级开销
     settextcolor(WHITE);
     TCHAR cost_buf[128];
-    if (b->level >= 3) {
+    if (b->level >= MAX_BUILDING_LEVEL) {
         _stprintf_s(cost_buf, _T("升级所需木材: MAX"));
     }
     else {
@@ -271,7 +274,7 @@ void DrawUpgradePanel(Building* b) {
     int btn_y = top + 230;  // 440
     int btn_w = 200, btn_h = 40;
 
-    if (b->level >= 3) {
+    if (b->level >= MAX_BUILDING_LEVEL) {
         setfillcolor(RGB(80, 80, 80)); // 满级灰色按钮
         fillroundrect(btn_x, btn_y, btn_x + btn_w, btn_y + btn_h, 8, 8);
         settextcolor(RGB(180, 180, 180));

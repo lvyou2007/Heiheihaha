@@ -7,9 +7,6 @@
 #include <stdio.h>
 #include <atlconv.h> 
 #include <windows.h>
-extern Building mine_build;
-extern Building wood_build;
-extern Building furnace_build;
 
 #pragma comment(lib, "msimg32.lib")
 
@@ -24,7 +21,7 @@ static IMAGE img_coal_icon;   // 煤炭图标
 static IMAGE img_monster;     // 仅供给饿狼使用
 static IMAGE img_meat_icon;    // 食物图标
 static IMAGE img_house;       //房屋
-static IMAGE img_smallmonster;//小怪
+static IMAGE img_smallmonster;
 static IMAGE img_level1, img_level2, img_level3;//建筑等级标识
 
 //房屋坐标
@@ -122,7 +119,29 @@ void DrawWorldLayer() {
         fillrectangle(bar_left, bar_top, bar_left + bar_width, bar_top + bar_height);
         setfillcolor(RGB(0, 200, 0));
         fillrectangle(bar_left, bar_top, bar_left + (int)(bar_width * ratio), bar_top + bar_height);
-
+        // 高亮被选中的小人（金色光圈）
+        if (cur->is_selected) {
+            // 强制检查：如果目标怪物无效，清除光圈
+            if (cur->target_monster == NULL || cur->target_monster->hp <= 0) {
+                cur->is_selected = 0;
+            }
+            else {
+                int radius = (int)(45 * game.camera.zoom);
+                setlinecolor(RGB(255, 215, 0));
+                setlinestyle(PS_SOLID, 3);
+                circle(screen_x, screen_y + draw_h / 4, radius);
+                setlinestyle(PS_SOLID, 1);
+            }
+        }
+        // 攻击目标连线（黄色虚线）
+        if (cur->target_monster != NULL && cur->target_monster->hp > 0) {
+            int tx, ty;
+            WorldToScreen(cur->target_monster->world_x, cur->target_monster->world_y, &tx, &ty);
+            setlinecolor(RGB(255, 255, 0));
+            setlinestyle(PS_DASH, 2);
+            line(screen_x, screen_y, tx, ty);
+            setlinestyle(PS_SOLID, 1);
+        }
         cur = cur->next;
     }
 
@@ -138,7 +157,7 @@ void DrawWorldLayer() {
     int draw_w = (int)(FURNACE_SIZE * game.camera.zoom);
     int draw_h = (int)(FURNACE_SIZE * game.camera.zoom);
     drawPNG(fx - draw_w / 2, fy - draw_h / 2, draw_w, draw_h, &img_furnace);
-    int lv3= furnace_build.level;
+    int lv3 = furnace_build.level;
     const int ICON_SIZE = 40;  // 固定像素大小，不受缩放影响
     int iconX = fx - ICON_SIZE / 2;
     int iconY = fy - draw_h / 2 - ICON_SIZE - 1;  // 建筑顶部向上偏移5像素
@@ -147,14 +166,11 @@ void DrawWorldLayer() {
     else if (lv3 == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
 
     // 矿场 (600, 800)
-    
     int mx, my;
     WorldToScreen(600.0f, 800.0f, &mx, &my);
     draw_w = (int)(MINE_SIZE * game.camera.zoom);
     draw_h = (int)(MINE_SIZE * game.camera.zoom);
     drawPNG(mx - draw_w / 2, my - draw_h / 2, draw_w, draw_h, &img_mine);
-
-    // ========== 矿场等级标识（正上方） ==========
     int lv = mine_build.level;
     iconX = mx - ICON_SIZE / 2;
     iconY = my - draw_h / 2 - ICON_SIZE - 1;  // 建筑顶部向上偏移5像素
@@ -309,6 +325,13 @@ void DrawUI() {
     // ==================== 2. 新增：渲染选中的升级弹窗 ====================
     if (selected_building != NULL) {
         DrawUpgradePanel(selected_building);
+    }
+    if (game.is_selecting_target) {
+        setbkmode(TRANSPARENT);
+        settextstyle(20, 0, _T("黑体"));
+        settextcolor(RGB(255, 200, 0));
+        TCHAR tip[] = _T("请点击一名人类，指派其攻击目标");
+        outtextxy(1280 / 2 - 150, 720 - 60, tip);
     }
 }
 

@@ -97,6 +97,37 @@ void ProcessInput() {
 
         // --- 1. 新增：处理鼠标左键点击（点击建筑与升级交互） ---
         if (msg.message == WM_LBUTTONDOWN) {
+            // 如果正在选择人类模式
+            if (game.is_selecting_target) {
+                float wx, wy;
+                ScreenToWorld(msg.x, msg.y, &wx, &wy);
+                Human* clicked_human = GetHoveredHuman(wx, wy, 25.0f);
+                if (clicked_human != NULL && game.pending_attack_monster != NULL) {
+                    clicked_human->target_monster = game.pending_attack_monster;
+                    clicked_human->is_selected = 1;   // 可选：UI高亮
+                    game.is_selecting_target = 0;
+                    game.pending_attack_monster = NULL;
+                }
+                else {
+                    // 点击空白取消选择
+                    game.is_selecting_target = 0;
+                    game.pending_attack_monster = NULL;
+                }
+                return; // 不再处理其他点击
+            }
+
+            // 否则，检测是否点击了怪物（进入选择模式）
+            float wx, wy;
+            ScreenToWorld(msg.x, msg.y, &wx, &wy);
+            Monster* clicked_monster = GetHoveredMonster(wx, wy, 35.0f);
+            if (clicked_monster != NULL) {
+                game.is_selecting_target = 1;
+                game.pending_attack_monster = clicked_monster;
+                // 可选：显示提示文字“点击一名人类指派攻击”
+                return;
+            }
+
+            // 然后继续原有的建筑点击等逻辑...
 
             // A. 如果升级弹窗已经打开，优先拦截并判定弹窗内部的点击事件
             if (selected_building != NULL) {
@@ -112,44 +143,34 @@ void ProcessInput() {
 
                 // 2. 检测是否点击了底部的 "升级" 按钮 (540, 440) -> (740, 480)
                 if (msg.x >= 540 && msg.x <= 740 && msg.y >= 440 && msg.y <= 480) {
-                    if (selected_building->level < 3) {
+                    if (selected_building->level < MAX_BUILDING_LEVEL) {
                         if (game.wood >= selected_building->cost_wood) {
-                            // 扣除木材并升级
                             game.wood -= selected_building->cost_wood;
                             selected_building->level++;
+                            int new_level = selected_building->level;
 
-                            // 根据新等级，更新对应建筑的指标与下一级消耗
+                            // 根据建筑类型，用方案B公式计算新属性（1级时等于初始值）
                             if (selected_building->type == 0) { // 矿场
-                                if (selected_building->level == 2) {
-                                    selected_building->produce_rate = 12;
-                                    selected_building->cost_wood = 300;
-                                }
-                                else if (selected_building->level == 3) {
-                                    selected_building->produce_rate = 25;
-                                    selected_building->cost_wood = 9999; // 满级标记
-                                }
+                                selected_building->produce_rate = 5 + (new_level - 1) * 5;   // 1级=5, 2级=10, 3级=15...
+                                selected_building->cost_wood = 150 + new_level * 50;          // 1级=200, 2级=250, 3级=300...
                             }
                             else if (selected_building->type == 1) { // 伐木场
-                                if (selected_building->level == 2) {
-                                    selected_building->produce_rate = 30;
-                                    selected_building->cost_wood = 250;
-                                }
-                                else if (selected_building->level == 3) {
-                                    selected_building->produce_rate = 50;
-                                    selected_building->cost_wood = 9999;
-                                }
+                                selected_building->produce_rate = 15 + (new_level - 1) * 10;  // 1级=15, 2级=25, 3级=35...
+                                selected_building->cost_wood = 100 + new_level * 40;          // 1级=140, 2级=180, 3级=220...
                             }
                             else if (selected_building->type == 2) { // 熔炉
-                                if (selected_building->level == 2) {
-                                    selected_building->produce_rate = 200; // 熔炉温度变200
-                                    game.furnace_temp = 200;               // 同步全局状态
-                                    selected_building->cost_wood = 450;
-                                }
-                                else if (selected_building->level == 3) {
-                                    selected_building->produce_rate = 350; // 熔炉温度变350
-                                    game.furnace_temp = 350;
-                                    selected_building->cost_wood = 9999;
-                                }
+                                selected_building->produce_rate = 100 + (new_level - 1) * 80; // 1级=100, 2级=180, 3级=260...
+                                selected_building->cost_wood = 200 + new_level * 60;          // 1级=260, 2级=320, 3级=380...
+                            }
+
+                            // 如果达到最高等级，设置 cost_wood 为不可升级
+                            if (new_level >= MAX_BUILDING_LEVEL) {
+                                selected_building->cost_wood = 9999;
+                            }
+
+                            // 如果是熔炉，同步全局温度
+                            if (selected_building->type == 2) {
+                                game.furnace_temp = selected_building->produce_rate;
                             }
                         }
                         else {
@@ -192,6 +213,20 @@ void ProcessInput() {
             if (dx * dx + dy * dy <= 100.0f * 100.0f) {
                 selected_building = &wood_build;
                 continue;
+            }
+            // 如果当前没有打开建筑弹窗（selected_building == NULL）且不是处于战斗状态
+            if (selected_building == NULL && game.current_state == STATE_CITY) {
+                float world_x, world_y;
+                ScreenToWorld(msg.x, msg.y, &world_x, &world_y);
+                // 先检查是否点到了怪物
+                Monster* clicked_monster = GetHoveredMonster(world_x, world_y, 35.0f); // 半径35像素
+                if (clicked_monster != NULL && clicked_monster->hp > 0) {
+                    // 进入指派模式
+                    game.is_selecting_target = 1;
+                    game.pending_attack_monster = clicked_monster;
+                    // 可选：在控制台输出提示，但我们可以用UI文字提示
+                    return; // 不再继续处理其他点击
+                }
             }
         }
 
@@ -242,6 +277,12 @@ void ProcessInput() {
                 game.camera.y = mouse_world_y - (float)msg.y / new_zoom;
 
                 ClampCamera();
+            }
+        }
+        if (msg.message == WM_KEYDOWN && msg.vkcode == VK_ESCAPE) {
+            if (game.is_selecting_target) {
+                game.is_selecting_target = 0;
+                game.pending_attack_monster = NULL;
             }
         }
     }

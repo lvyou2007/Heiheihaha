@@ -32,7 +32,10 @@ Human* CreateHuman(int base_level) {
     h->exp = 0;
     h->level = base_level;
     h->is_superman = 0;
+    h->target_monster = NULL;
+    h->is_selected = 0;
     h->prev = h->next = NULL;
+
 
     if (rand() % 100 < 5) {
         h->is_superman = 1;
@@ -106,95 +109,82 @@ void PrintAllHumans() {
 void DailySettlement() {
     Human* cur = game.head;
     while (cur != NULL) {
-        Human* next = cur->next;  // 因为可能删除cur，先存下一个
-
-       
-
-        // 1. 饱食度下降（每天-10）
+        Human* next = cur->next;
+        // 1. 饱食度下降
         cur->hunger -= 10;
-
-        // === 核心新增：自动吃肉自循环。当小人饥饿度低于 80 且仓库有食物（meat）时，自动消耗 1 个食物，回 10 饱食度 ===
+        // 自动吃肉
         if (cur->hunger < 80 && game.meat > 0) {
-            game.meat--;            // 基地肉食储备 -1
-            cur->hunger +=10;      // 饱食度回复 10 点
-            if (cur->hunger > 100) {
-                cur->hunger = 100;  // 饱食度上限
-            }
+            game.meat--;
+            cur->hunger += 10;
+            if (cur->hunger > 100) cur->hunger = 100;
         }
-
         if (cur->hunger < 0) cur->hunger = 0;
-        if (cur->hunger == 0) {
-            cur->hp -= 5;   // 饥饿扣血
-        }
+        if (cur->hunger == 0) cur->hp -= 5;
 
-        // 2. 温度影响（如果熔炉等级低，温度 < 10 就扣血）
-        int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2); // 计算体感温度
-        if (effective_temp < 10) {
-            cur->hp -= 3; // 只有体感温度低于 10 度时才会冻伤扣血
-        }
+        // 2. 温度影响
+        int effective_temp = game.env_temp + (int)(game.furnace_temp * 0.2);
+        if (effective_temp < 10) cur->hp -= 3;
 
-        // 3. 经验升级（满100经验升级）
+        // 3. 经验升级
         if (cur->exp >= 100) {
             cur->level++;
             cur->exp -= 100;
             cur->max_hp += 20;
             cur->atk += 5;
             cur->def += 3;
-            cur->hp = cur->max_hp;   // 升级回满血
-            // 限制最大值（可选）
-            if (cur->hp > cur->max_hp) cur->hp = cur->max_hp;
+            cur->hp = cur->max_hp;
         }
-
-        // 4. 生命值上限保护与死亡判定
         if (cur->hp > cur->max_hp) cur->hp = cur->max_hp;
+
+        // 4. 死亡判定
         if (cur->hp <= 0) {
-            RemoveHumanFromList(cur);   // 死亡，从链表中删除
-            // 注意：cur 已经被 free，不能再访问，但 next 已经保存好了
+            RemoveHumanFromList(cur);
         }
-
-        // === 核心新增：环境温度每日逐渐降低 3 度，直到达到极限寒冬 -45 度 ===
-        if (game.env_temp > -45) {
-            game.env_temp -= 3;
-            if (game.env_temp < -45) game.env_temp = -45;
-        }
-
-        //每日根据升级后的建筑指标，自动获得生存资源 ===
-        game.wood += wood_build.produce_rate;  // 根据伐木场等级自动加木材
-        game.coal += mine_build.produce_rate;  // 根据矿场等级自动加煤炭
 
         cur = next;
     }
 
-    // === 核心新增1：每日结算中，每个存活人口每日自动采集 3 个食物，维持温饱线 ===
+    // ========== 移出循环的代码 ==========
+    // 环境温度下降（每天一次）
+    if (game.env_temp > -45) {
+        game.env_temp -= 3;
+        if (game.env_temp < -45) game.env_temp = -45;
+    }
+    // 建筑资源产出（每天一次）
+    game.wood += wood_build.produce_rate;
+    game.coal += mine_build.produce_rate;
+    // ==================================
+
+    // 每日自动采集食物
     game.meat += game.population * 3;
 
-    // === 核心新增2：大熔炉燃料消耗机制。煤炭耗尽则熔炉熄火 ===
-    int coal_needed = furnace_build.level * 4; // 每日煤炭消耗量
+    // 熔炉燃料消耗
+    int coal_needed = furnace_build.level * 4;
     if (game.coal >= coal_needed) {
         game.coal -= coal_needed;
-        game.furnace_temp = furnace_build.produce_rate; // 充足，维持加热
+        game.furnace_temp = furnace_build.produce_rate;
     }
     else {
         game.coal = 0;
-        game.furnace_temp = 0; // 煤炭枯竭，熔炉瞬间熄火，外界体感暴跌！
+        game.furnace_temp = 0;
     }
 
-    // === 核心新增3：游戏结束状态判定。人口降为 0 时触发 GameOver 状态 ===
+    // 游戏结束判定
     if (game.population <= 0) {
         game.current_state = STATE_GAMEOVER;
     }
 
-
-    // 5. 人口自然繁衍（每天增加当前人口的5%）
+    // 人口繁衍
     if (game.population > 0) {
         int new_count = (int)(game.population * 0.05);
         if (new_count < 1 && game.population > 0) new_count = 1;
         for (int i = 0; i < new_count; i++) {
-            Human* baby = CreateHuman(1);   // 等级设为1，CreateHuman内部会处理超凡概率
+            Human* baby = CreateHuman(1);
             AddHumanToList(baby);
         }
     }
 }
+
 Human** GetFighters(int* out_count) {
     if (game.population == 0) {
         *out_count = 0;

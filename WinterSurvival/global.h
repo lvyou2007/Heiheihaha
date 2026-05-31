@@ -5,6 +5,9 @@
 
 #define WORLD_WIDTH  3000.0f  // 大地图宽度
 #define WORLD_HEIGHT 3000.0f  // 大地图高度
+#define MAX_BUILDING_LEVEL 10   //
+
+struct Monster;   // 前向声明
 
 typedef enum { STATE_MENU, STATE_CITY, STATE_COMBAT, STATE_GAMEOVER } AppState;
 typedef enum { ROLE_NORMAL, ROLE_SUPER } HumanType;
@@ -26,6 +29,9 @@ typedef struct Human {
     int exp;
     int level;
     int is_superman;
+    Monster* target_monster;   // 当前手动指定的攻击目标（NULL 表示无）
+    int is_selected;           // 是否被玩家选中（用于 UI 高亮
+    DWORD last_attack_time;   // 新增：上次攻击的时间（毫秒
     struct Human* prev;
     struct Human* next;
 } Human;
@@ -78,6 +84,9 @@ typedef struct GameState {
     Human* hovered_target;
     Monster* hovered_monster; // 新增：当前鼠标悬浮的野怪
     Monster current_boss;
+
+    int is_selecting_target;       // 是否处于“选择人类”模式
+    Monster* pending_attack_monster; // 待攻击的怪物指针
 } GameState;
 
 extern GameState game;
