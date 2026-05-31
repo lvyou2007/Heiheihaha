@@ -7,6 +7,7 @@
 #include "ui_panel.h"
 #include "combat_sys.h"
 #include "human_logic.h"
+#include "audio.h"
 #include <Windows.h>
 #include <stdio.h>
 #include <math.h>
@@ -476,6 +477,9 @@ int main() {
 
     InitGame();
     InitRender();
+
+    // ---------- 背景音乐（循环播放）----------
+    PlayBGM("bgm.mp3");   // 确保 bgm.mp3 在 exe 同目录或项目目录下
 
     BeginBatchDraw();
 

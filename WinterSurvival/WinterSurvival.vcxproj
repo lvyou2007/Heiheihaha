@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="audio.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="combat_sys.h" />
     <ClInclude Include="global.h" />
@@ -142,6 +143,7 @@
     <ClInclude Include="ui_panel.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="audio.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="combat_sys.cpp" />
     <ClCompile Include="human_logic.cpp" />
