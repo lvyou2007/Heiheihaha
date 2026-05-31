@@ -24,7 +24,7 @@ void DrawHoverTooltip(Human* target, int mouse_screen_x, int mouse_screen_y) {
 
     // 名字（自适应 %S 格式化窄字符 target->name 并在超凡者时显示金色）
     TCHAR name_buf[64];
-    _stprintf_s(name_buf, _T("%S"), target->name);
+    _stprintf_s(name_buf, _T("%s"), target->name);
     if (target->is_superman) settextcolor(RGB(255, 215, 0));
     else settextcolor(WHITE);
     outtextxy(left + 10, top + 10, name_buf);
@@ -84,7 +84,7 @@ void DrawMonsterTooltip(Monster* target, int mouse_screen_x, int mouse_screen_y)
 
     // 名字颜色判定
     TCHAR name_buf[64];
-    _stprintf_s(name_buf, _T("%S"), target->name);
+    _stprintf_s(name_buf, _T("%s"), target->name);
     if (target->type == MONSTER_AGGRESSIVE) settextcolor(RGB(255, 69, 0));
     else settextcolor(RGB(255, 215, 0));
     outtextxy(left + 10, top + 10, name_buf);
@@ -130,7 +130,7 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
 
     // Boss 名字格式化自适应 %S
     TCHAR enemy_name[64];
-    _stprintf_s(enemy_name, _T("%S"), enemy->name);
+    _stprintf_s(enemy_name, _T("%s"), enemy->name);
     settextcolor(RGB(200, 100, 100));
     outtextxy(left + panel_w / 2 + 50, top + 15, enemy_name);
 
@@ -148,7 +148,7 @@ void DrawCombatPanel(Human** fighters, int fighter_count, Monster* enemy) {
 
         // 格式化战士人名
         TCHAR h_name[64];
-        _stprintf_s(h_name, _T("%S"), h->name);
+        _stprintf_s(h_name, _T("%s"), h->name);
         outtextxy(left + 20, y, h_name);
 
         float r = (float)h->hp / h->max_hp;

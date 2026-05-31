@@ -260,7 +260,7 @@ void SpawnMonsters() {
                 m->type = MONSTER_PASSIVE;
                 strcpy(m->name, "温顺驯鹿");
                 m->max_hp = m->hp = 50 + (avg_level - 1) * 15;
-                m->atk = 0;
+                m->atk = 5;
                 m->def = 3 + (avg_level - 1) * 2;
                 m->meat_reward = 60 + (avg_level - 1) * 15;
                 m->exp_reward = 15 + (avg_level - 1) * 5;
@@ -270,8 +270,8 @@ void SpawnMonsters() {
                 strcpy(m->name, "暴雪饿狼");
                 // === 数值削减：将饿狼初始属性大幅度削减，确保前期小人们能战胜它 ===
                 m->max_hp = m->hp = 55 + (avg_level - 1) * 15; // 基础生命 55 
-                m->atk = 12 + (avg_level - 1) * 3;             // 基础攻击降为 12 点
-                m->def = 3 + (avg_level - 1) * 2;              // 基础防御降为 3 点
+                m->atk = 35 + (avg_level - 1) * 3;             // 基础攻击提升为 35 点
+                m->def = 5 + (avg_level - 1) * 2;              // 基础防御降为 5 点
                 m->meat_reward = 40 + (avg_level - 1) * 10;
                 m->exp_reward = 45 + (avg_level - 1) * 8;
             }

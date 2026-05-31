@@ -106,7 +106,7 @@ void DrawWorldLayer() {
         settextcolor(WHITE);
 
         TCHAR name_buf[64];
-        _stprintf_s(name_buf, _T("%S"), cur->name);
+        _stprintf_s(name_buf, _T("%s"), cur->name);
         outtextxy(screen_x - 20, screen_y - draw_h / 2 - 15, name_buf);
 
         // 血条
@@ -240,7 +240,7 @@ void DrawWorldLayer() {
         else settextcolor(RGB(255, 215, 0));
 
         TCHAR m_name_buf[64];
-        _stprintf_s(m_name_buf, _T("%S"), m_cur->name);
+        _stprintf_s(m_name_buf, _T("%s"), m_cur->name);
         outtextxy(screen_x - 20, screen_y - 25, m_name_buf);
 
         // 绘制红色生命条
