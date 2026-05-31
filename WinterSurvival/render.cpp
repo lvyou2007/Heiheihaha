@@ -61,13 +61,13 @@ void InitRender() {
     loadimage(&img_level1, _T("res/level 1.png"));
     loadimage(&img_level2, _T("res/level 2.png"));
     loadimage(&img_level3, _T("res/level 3.png"));
-    loadimage(&img_level3, _T("res/level 4.png"));
-    loadimage(&img_level3, _T("res/level 5.png"));
-    loadimage(&img_level3, _T("res/level 6.png"));
-    loadimage(&img_level3, _T("res/level 7.png"));
-    loadimage(&img_level3, _T("res/level 8.png"));
-    loadimage(&img_level3, _T("res/level 9.png"));
-    loadimage(&img_level3, _T("res/level 10.png"));
+    loadimage(&img_level4, _T("res/level 4.png"));
+    loadimage(&img_level5, _T("res/level 5.png"));
+    loadimage(&img_level6, _T("res/level 6.png"));
+    loadimage(&img_level7, _T("res/level 7.png"));
+    loadimage(&img_level8, _T("res/level 8.png"));
+    loadimage(&img_level9, _T("res/level 9.png"));
+    loadimage(&img_level10, _T("res/level 10.png"));
 }
 
 void DrawWorldLayer() {
