@@ -22,7 +22,7 @@ static IMAGE img_monster;     // 仅供给饿狼使用
 static IMAGE img_meat_icon;    // 食物图标
 static IMAGE img_house;       //房屋
 static IMAGE img_smallmonster;
-static IMAGE img_level1, img_level2, img_level3;//建筑等级标识
+static IMAGE img_level1, img_level2, img_level3, img_level4, img_level5, img_level6, img_level7, img_level8, img_level9, img_level10;//建筑等级标识
 
 //房屋坐标
 static const float house_coords[][2] = {
@@ -61,6 +61,13 @@ void InitRender() {
     loadimage(&img_level1, _T("res/level 1.png"));
     loadimage(&img_level2, _T("res/level 2.png"));
     loadimage(&img_level3, _T("res/level 3.png"));
+    loadimage(&img_level3, _T("res/level 4.png"));
+    loadimage(&img_level3, _T("res/level 5.png"));
+    loadimage(&img_level3, _T("res/level 6.png"));
+    loadimage(&img_level3, _T("res/level 7.png"));
+    loadimage(&img_level3, _T("res/level 8.png"));
+    loadimage(&img_level3, _T("res/level 9.png"));
+    loadimage(&img_level3, _T("res/level 10.png"));
 }
 
 void DrawWorldLayer() {
@@ -164,6 +171,13 @@ void DrawWorldLayer() {
     if (lv3 == 1) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level1);
     else if (lv3 == 2) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level2);
     else if (lv3 == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
+    else if (lv3 == 4) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level4);
+    else if (lv3 == 5) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level5);
+    else if (lv3 == 6) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level6);
+    else if (lv3 == 7) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level7);
+    else if (lv3 == 8) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level8);
+    else if (lv3 == 9) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level9);
+    else if (lv3 == 10) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level10);
 
     // 矿场 (600, 800)
     int mx, my;
@@ -177,6 +191,13 @@ void DrawWorldLayer() {
     if (lv == 1) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level1);
     else if (lv == 2) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level2);
     else if (lv == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
+    else if (lv == 4) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level4);
+    else if (lv == 5) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level5);
+    else if (lv == 6) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level6);
+    else if (lv == 7) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level7);
+    else if (lv == 8) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level8);
+    else if (lv == 9) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level9);
+    else if (lv == 10) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level10);
 
     // 伐木场 (2000, 1800)
     int wx, wy;
@@ -190,6 +211,13 @@ void DrawWorldLayer() {
     if (lv2 == 1) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level1);
     else if (lv2 == 2) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level2);
     else if (lv2 == 3) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level3);
+    else if (lv2 == 4) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level4);
+    else if (lv2 == 5) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level5);
+    else if (lv2 == 6) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level6);
+    else if (lv2 == 7) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level7);
+    else if (lv2 == 8) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level8);
+    else if (lv2 == 9) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level9);
+    else if (lv2 == 10) drawPNG(iconX, iconY, ICON_SIZE, ICON_SIZE, &img_level10);
 
     //房屋
     // 装饰性房屋
